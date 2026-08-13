@@ -618,13 +618,27 @@ final Map<String, RegionArt> kLandmarkArt = {
   ]),
 
   // 47170 안동시 — 하회마을 (세계유산, 조선)
+  //
+  // 장면 구성: 마을을 휘감는 물돌이와 솔숲(배경) 앞에 초가 한 채(핵심).
+  // 하회(河回)라는 이름 자체가 물이 돌아 흐른다는 뜻이라 물굽이가 배경으로 맞다.
+  // 솔숲은 삼각형 반복이라 좌우가 잘려도 읽힌다.
   '47170': const RegionArt('하회마을', [
-    ArtShape('M8 82 C28 70 36 94 58 80 C72 71 84 76 94 70', stroke: _a2),
-    ArtShape('M16 50 C22 38 40 38 46 50 Z', fill: _p),
-    ArtShape('M19 50 h24 v16 h-24 Z', fill: _p),
-    ArtShape('M27 66 V56 h8 v10', fill: _a),
-    ArtShape('M56 58 C60 49 74 49 78 58 Z', fill: _p),
-    ArtShape('M58 58 h18 v12 h-18 Z', fill: _p),
+    // 배경 — 솔숲 띠와 물돌이
+    //
+    // 나무를 하나씩 떼어 그렸더니 삼각형과 줄기가 분리돼 **화살표처럼** 보였다.
+    // 톱니 모양으로 이어 붙인 띠가 숲으로 읽힌다.
+    ArtShape(
+        'M-25 46 L-15 26 L-5 44 L5 28 L15 44 L25 30 L35 44 L45 27 L55 44 '
+        'L65 30 L75 44 L85 27 L95 44 L105 30 L115 44 L125 30 L125 52 L-25 52 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-25 78 C5 62 30 92 55 76 C78 62 100 80 125 70',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 90 C5 74 30 104 55 88 C78 74 100 92 125 82',
+        stroke: _a2, layer: ArtLayer.background),
+    // 핵심 — 초가 한 채
+    ArtShape('M36 52 C40 40 60 40 64 52 Z', fill: _p),
+    ArtShape('M38 52 h24 v18 h-24 Z', fill: _p),
+    ArtShape('M45 70 V60 h10 v10', fill: _a),
   ]),
 
   // 50110 제주시 — 돌하르방 (조선 후기 석상)
@@ -654,26 +668,50 @@ final Map<String, RegionArt> kLandmarkArt = {
   ]),
 
   // 12150 순천시 — 순천만 갈대밭 (습지, 자연경관)
+  //
+  // 장면 구성: 갯벌 물길과 철새(배경) 사이에 갈대 세 포기(핵심).
+  // 물길은 구불구불한 곡선 반복이라 잘려도 갯벌로 읽힌다.
+  // 이전 구성은 갈대가 좌우로 넓게 퍼져 있어 잘리면 줄기만 남았다.
   '12150': const RegionArt('순천만 갈대밭', [
-    ArtShape('M10 78 h80', stroke: _a2),
-    ArtShape('M14 88 h72', stroke: _a2),
-    ArtShape('M26 78 C24 58 28 44 30 34'),
-    ArtShape('M44 78 C42 54 46 38 48 26'),
-    ArtShape('M62 78 C60 60 64 46 66 36'),
-    ArtShape('M78 78 C77 62 80 52 81 44'),
-    ArtShape('M30 34 C24 28 22 22 24 18 C30 20 32 26 30 34 Z', fill: _a),
-    ArtShape('M48 26 C42 20 40 14 42 10 C48 12 50 18 48 26 Z', fill: _a),
-    ArtShape('M66 36 C60 30 58 24 60 20 C66 22 68 28 66 36 Z', fill: _a),
+    // 배경 — 갯벌 물길과 철새
+    ArtShape('M-25 66 C0 60 25 72 50 66 C75 60 100 70 125 64',
+        stroke: _a2, strokeWidth: 3, layer: ArtLayer.background),
+    ArtShape('M-25 78 C0 70 25 86 50 78 C75 70 100 84 125 76',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 90 C0 82 25 98 50 90 C75 82 100 96 125 88',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M8 20 C11 16 15 16 18 20 M28 13 C31 9 35 9 38 13 '
+        'M84 22 C87 18 91 18 94 22 M104 15 C107 11 111 11 114 15',
+        strokeWidth: 3, layer: ArtLayer.background),
+    // 핵심 — 갈대 세 포기
+    ArtShape('M41 72 C39 58 43 48 45 42'),
+    ArtShape('M45 42 C40 37 38 32 40 29 C45 31 47 36 45 42 Z', fill: _a),
+    ArtShape('M50 72 C48 56 52 44 54 38'),
+    ArtShape('M54 38 C49 33 47 30 49 27 C54 29 56 33 54 38 Z', fill: _a),
+    ArtShape('M60 72 C59 58 62 48 63 43'),
+    ArtShape('M63 43 C58 38 56 34 58 31 C63 33 65 38 63 43 Z', fill: _a),
   ]),
 
   // 47940 울릉군 — 울릉도 (자연경관)
+  //
+  // 장면 구성: 바다 물결과 해, 멀리 부속 섬(배경) 가운데 울릉도 본섬(핵심).
+  // 물결은 반복이라 잘려도 바다로 읽힌다.
+  //
+  // 참고: 에셋의 울릉군은 링이 1개라 **독도가 들어 있지 않다.** 아트에 부속 섬을
+  // 배경으로 두었으나 지도와 정확히 대응하지는 않는다 (S2 에서 에셋 확인).
   '47940': const RegionArt('울릉도', [
-    ArtShape('M6 74 L28 34 L38 50 L48 30 L70 74 Z', fill: _p),
-    ArtShape('M72 74 L84 50 L94 74 Z', fill: _p),
-    ArtShape('M28 34 L34 44', stroke: _a2),
-    ArtShape.circle(76, 26, 9, fill: _a),
-    ArtShape('M6 84 C18 78 30 90 42 84 C54 78 66 90 78 84 C86 80 90 82 94 84',
-        stroke: _a2),
+    // 배경 — 해, 먼 섬, 물결
+    ArtShape.circle(88, 24, 12,
+        fill: _a, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-20 62 L-10 46 L0 62 Z M100 64 L112 44 L124 64 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-25 80 C-5 74 10 86 30 80 C50 74 65 86 85 80 C100 76 112 82 125 78',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 92 C-5 86 10 98 30 92 C50 86 65 98 85 92 C100 88 112 94 125 90',
+        stroke: _a2, layer: ArtLayer.background),
+    // 핵심 — 울릉도 본섬
+    ArtShape('M30 70 L42 40 L50 52 L58 34 L70 70 Z', fill: _p),
+    ArtShape('M38 52 L42 40 L46 48', stroke: _a2),
   ]),
 };
 

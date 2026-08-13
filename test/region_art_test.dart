@@ -150,43 +150,39 @@ void main() {
       }
     });
 
-    test('장면 구성 3종의 핵심 모티프가 안전 영역 안에 있다', () {
-      // B 배치는 잘림을 전제한다. 핵심이 안전 영역을 벗어나면 가장 불리한
-      // 지역(부산 서구, 가로:세로 1:3.73)에서 무엇인지 알 수 없게 된다.
-      // 획 굵기의 절반만 여유를 둔다.
-      const slack = 3.0;
-      final scene = <String, RegionArt>{
-        '첨성대': kLandmarkArt['47130']!,
-        '수원화성 팔달문': kLandmarkArt['41115']!,
-        '돌하르방': kLandmarkArt['50110']!,
-        '들판·농촌': kCategoryArt[ArtCategory.field]!,
-      };
-      for (final e in scene.entries) {
-        for (final s in e.value.shapes) {
-          if (s.layer != ArtLayer.core) continue;
-          final b = _boundsOf(s);
-          expect(b.left, greaterThanOrEqualTo(kSafeArea.left - slack),
-              reason: e.key);
-          expect(b.top, greaterThanOrEqualTo(kSafeArea.top - slack),
-              reason: e.key);
-          expect(b.right, lessThanOrEqualTo(kSafeArea.right + slack),
-              reason: e.key);
-          expect(b.bottom, lessThanOrEqualTo(kSafeArea.bottom + slack),
-              reason: e.key);
-        }
+    test('모든 랜드마크가 장면 구성이다 — 배경 층을 가진다', () {
+      // 배경이 없으면 "오브젝트 하나" 구성이라 B 배치에서 잘리면 무너진다.
+      // 목록을 고정하지 않고 전수 검사하므로 새 랜드마크도 자동으로 걸린다.
+      for (final art in kLandmarkArt.values) {
+        expect(art.shapes.any((s) => s.layer == ArtLayer.background), isTrue,
+            reason: '${art.name}: 배경 층이 없다 (아이콘 구성)');
       }
     });
 
-    test('장면 구성 아트에는 배경 층이 있다', () {
-      // 배경이 없으면 "오브젝트 하나" 구성으로 되돌아간 것이다.
-      for (final art in [
-        kLandmarkArt['47130']!,
-        kLandmarkArt['41115']!,
-        kLandmarkArt['50110']!,
-        kCategoryArt[ArtCategory.field]!,
-      ]) {
-        expect(art.shapes.any((s) => s.layer == ArtLayer.background), isTrue,
-            reason: art.name);
+    test('장면 구성 아트의 핵심 모티프가 안전 영역 안에 있다', () {
+      // B 배치는 잘림을 전제한다. 핵심이 안전 영역을 벗어나면 가장 불리한
+      // 지역(부산 서구, 가로:세로 1:3.73)에서 무엇인지 알 수 없게 된다.
+      //
+      // 배경 층을 가진 아트(= 장면 구성으로 전환된 것)를 전부 검사한다.
+      // 아직 전환하지 않은 카테고리 아이콘은 대상이 아니다.
+      const slack = 3.0;
+      final scene = [...kLandmarkArt.values, ...kCategoryArt.values]
+          .where((a) => a.shapes.any((s) => s.layer == ArtLayer.background));
+      expect(scene, isNotEmpty);
+
+      for (final art in scene) {
+        for (final s in art.shapes) {
+          if (s.layer != ArtLayer.core) continue;
+          final b = _boundsOf(s);
+          expect(b.left, greaterThanOrEqualTo(kSafeArea.left - slack),
+              reason: '${art.name}: $b');
+          expect(b.top, greaterThanOrEqualTo(kSafeArea.top - slack),
+              reason: '${art.name}: $b');
+          expect(b.right, lessThanOrEqualTo(kSafeArea.right + slack),
+              reason: '${art.name}: $b');
+          expect(b.bottom, lessThanOrEqualTo(kSafeArea.bottom + slack),
+              reason: '${art.name}: $b');
+        }
       }
     });
 
