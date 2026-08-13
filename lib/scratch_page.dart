@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'frame_stats.dart';
+import 'geometry.dart';
 import 'map_data.dart';
 
 /// 지역 하나를 복권처럼 긁는 전용 화면.
@@ -72,6 +73,15 @@ class _ScratchPageState extends State<ScratchPage>
     super.dispose();
   }
 
+  /// 면적 비율 계산에 쓸 최소 표본 수.
+  ///
+  /// 고정 격자만 쓰면 bounds 대비 실제 육지가 작은 다도해에서 표본이 극히 적어진다.
+  /// 옹진군은 41x41 격자에서 15개뿐이라 한 점이 6.7% 를 좌우했다.
+  static const minSamples = 300;
+
+  /// 표본 격자 상한. 이 이상은 `Path.contains` 호출 비용이 화면 진입을 늦춘다.
+  static const maxGrid = 220;
+
   /// 지역 Path 를 화면 크기에 맞춰 변환하고, 면적 계산용 표본점을 깐다.
   /// 레이아웃 크기가 정해진 뒤 한 번만 실행된다.
   void _prepare(Size size) {
@@ -93,36 +103,66 @@ class _ScratchPageState extends State<ScratchPage>
     _path = widget.region.path.transform(m.storage);
 
     // 원본(지도) 좌표에서 내부 판정 후 화면 좌표로 옮긴다.
-    // 다도해 지역은 bounds 가 넓어 표본이 성기지 않게 격자를 촘촘히 잡는다.
-    const grid = 40;
-    final samples = <Offset>[];
+    //
+    // 격자를 고정하면 다도해에서 표본이 말라붙는다. 1차로 성기게 훑어 육지 비율을
+    // 구한 뒤, 필요한 격자 크기를 역산해 한 번만 더 훑는다. 전수 확대가 아니라
+    // 2회 통과라 비용이 예측 가능하다.
+    var samples = _collectSamples(b, m, 40);
+    if (samples.length < minSamples) {
+      const first = 41 * 41;
+      final landRatio = samples.length / first;
+      final needed = landRatio <= 0
+          ? maxGrid
+          : math.sqrt(minSamples / landRatio).ceil();
+      final grid = needed.clamp(41, maxGrid);
+      samples = _collectSamples(b, m, grid);
+    }
+    _samples = samples;
+    _covered = List.filled(_samples.length, false);
+    _stats.reset(); // 준비 단계 프레임은 측정에서 제외
+    debugPrint('[SCRATCH] 준비 ${widget.region.name} '
+        '표본 ${_samples.length}개 (1점당 '
+        '${_samples.isEmpty ? 0 : (100 / _samples.length).toStringAsFixed(2)}%)');
+  }
+
+  /// [grid] x [grid] 로 bounds 를 훑어 폴리곤 내부 점만 화면 좌표로 모은다.
+  List<Offset> _collectSamples(Rect b, Matrix4 m, int grid) {
+    final out = <Offset>[];
     for (var i = 0; i <= grid; i++) {
+      final x = b.left + b.width * i / grid;
       for (var j = 0; j <= grid; j++) {
-        final p = Offset(
-          b.left + b.width * i / grid,
-          b.top + b.height * j / grid,
-        );
+        final p = Offset(x, b.top + b.height * j / grid);
         if (widget.region.path.contains(p)) {
-          samples.add(MatrixUtils.transformPoint(m, p));
+          out.add(MatrixUtils.transformPoint(m, p));
         }
       }
     }
-    _samples = samples;
-    _covered = List.filled(samples.length, false);
-    _stats.reset(); // 준비 단계 프레임은 측정에서 제외
+    return out;
   }
 
   void _addPoint(Offset p, {required bool newStroke}) {
     if (_done) return;
     final sw = Stopwatch()..start();
+
+    // 이전 점을 기억해 두고 **선분** 기준으로 덮인 표본을 센다.
+    // 화면에는 두 점 사이를 선으로 이어 지우는데 진행률만 점 기준으로 세면,
+    // 손가락을 빠르게 움직여 이벤트 간격이 벌어질수록 같은 자취인데도
+    // 진행률이 낮게 나온다. 즉 기기와 입력 속도에 따라 값이 달라진다.
+    Offset? prev;
     if (newStroke || _strokes.isEmpty) {
       _strokes.add([p]);
     } else {
+      prev = _strokes.last.last;
       _strokes.last.add(p);
     }
+
     for (var i = 0; i < _samples.length; i++) {
       if (_covered[i]) continue;
-      if ((_samples[i] - p).distanceSquared <= brush * brush) {
+      final s = _samples[i];
+      final d = prev == null
+          ? (s - p).distance
+          : distancePointToSegment(s, prev, p);
+      if (d <= brush) {
         _covered[i] = true;
         _coveredCount++;
       }

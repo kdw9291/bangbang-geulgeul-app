@@ -1,9 +1,10 @@
 import 'dart:convert';
-import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/services.dart' show rootBundle;
+
+import 'geometry.dart';
 
 /// 시도 색. 참조 실물 맵의 권역 논리를 따른다
 /// (수도권 자주 · 강원 주황 · 충청 보라 · 전라 초록 · 경상 파랑 · 제주 연두).
@@ -61,27 +62,12 @@ class Region {
     var best = double.infinity;
     for (final ring in rings) {
       for (var i = 0; i + 3 < ring.length; i += 2) {
-        final d = _segmentDistance(
+        final d = distanceToSegmentRaw(
             p.dx, p.dy, ring[i], ring[i + 1], ring[i + 2], ring[i + 3]);
         if (d < best) best = d;
       }
     }
     return best;
-  }
-
-  static double _segmentDistance(
-      double px, double py, double ax, double ay, double bx, double by) {
-    final vx = bx - ax, vy = by - ay;
-    final wx = px - ax, wy = py - ay;
-    final len2 = vx * vx + vy * vy;
-    var t = len2 <= 0 ? 0.0 : (wx * vx + wy * vy) / len2;
-    if (t < 0) {
-      t = 0;
-    } else if (t > 1) {
-      t = 1;
-    }
-    final dx = px - (ax + t * vx), dy = py - (ay + t * vy);
-    return math.sqrt(dx * dx + dy * dy);
   }
 }
 
