@@ -4,6 +4,11 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import 'art_category.dart';
+import 'region_category.g.dart';
+
+export 'art_category.dart';
+
 /// T6 아트 전략 파일럿 — 지역 아트를 그리는 최소 구현.
 ///
 /// **이 파일은 공수와 성능을 실측하기 위한 파일럿이다.** 10개 지역만 담고 있으며
@@ -484,12 +489,6 @@ class RegionArtCache {
 // 파일럿 데이터 — 10개 지역
 // ---------------------------------------------------------------------------
 
-/// 3층 카테고리 아이콘. 랜드마크가 없는 지역이 재사용한다.
-///
-/// 원형은 8종이지만 그대로 8개 결과물로 반복하지 않는다 — S2 에서 시도 팔레트와
-/// 배치를 지역 코드로 조합해 변형을 늘린다(`design/art-strategy.md` §3.2).
-enum ArtCategory { mountain, sea, island, city, heritage, hotspring, river, field }
-
 const _p = ArtPalette.paper;
 const _a = ArtPalette.accent;
 const _a2 = ArtPalette.accent2;
@@ -780,18 +779,13 @@ final Map<String, RegionArt> kLandmarkArt = {
   ]),
 };
 
-/// 랜드마크가 없는 지역의 카테고리 배정. **파일럿 4개만 담고 있다.**
-/// 256개 전량 배정은 T6 완료 조건 2번이다.
-const Map<String, ArtCategory> kRegionCategory = {
-  '11110': ArtCategory.city, // 서울 종로구
-  '12770': ArtCategory.field, // 장흥군 — 세로 2.15배
-  '28720': ArtCategory.island, // 옹진군 — 다도해 최악 (링 20)
-  '26140': ArtCategory.sea, // 부산 서구 — 세로 3.73배
-};
-
 /// 지역 코드에 해당하는 아트를 고른다.
 ///
 /// **상호 배타적 폴백 등급이다** — 랜드마크가 있으면 랜드마크, 없으면 카테고리,
 /// 카테고리도 없으면 `null`(1층: 단색 + 지역명). 합성 레이어가 아니다.
+///
+/// 카테고리 배정 256개는 `region_category.g.dart` 에 있고
+/// `design/tools/make_category_map.py` 가 만든다. 배정 근거는
+/// `design/category-assignment.md` 참고.
 RegionArt? artForRegion(String code) =>
     kLandmarkArt[code] ?? kCategoryArt[kRegionCategory[code]];
