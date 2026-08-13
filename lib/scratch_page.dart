@@ -4,8 +4,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'frame_stats.dart';
-import 'geometry.dart';
 import 'map_data.dart';
+import 'scratch_progress.dart';
 
 /// 지역 하나를 복권처럼 긁는 전용 화면.
 ///
@@ -42,17 +42,16 @@ class _ScratchPageState extends State<ScratchPage>
   late final AnimationController _fade;
 
   Path? _path; // 화면 좌표로 변환된 지역 Path
-  List<Offset> _samples = const []; // 면적 비율 계산용 내부 표본점
-  List<bool> _covered = const [];
-  int _coveredCount = 0;
+  ScratchProgress? _progress;
+  Size? _preparedFor; // 어떤 화면 크기로 준비했는지
+  bool _preparing = false;
   bool _done = false;
 
   final _stats = FrameStats();
   int _panEvents = 0;
   int _panMicros = 0;
 
-  double get _ratio =>
-      _samples.isEmpty ? 0 : _coveredCount / _samples.length;
+  double get _ratio => _progress?.ratio ?? 0;
 
   @override
   void initState() {
@@ -73,26 +72,15 @@ class _ScratchPageState extends State<ScratchPage>
     super.dispose();
   }
 
-  /// 면적 비율 계산에 쓸 최소 표본 수.
-  ///
-  /// 고정 격자만 쓰면 bounds 대비 실제 육지가 작은 다도해에서 표본이 극히 적어진다.
-  /// 옹진군은 41x41 격자에서 15개뿐이라 한 점이 6.7% 를 좌우했다.
-  static const minSamples = 300;
-
-  /// 표본 격자 상한. 이 이상은 `Path.contains` 호출 비용이 화면 진입을 늦춘다.
-  static const maxGrid = 220;
-
-  /// 지역 Path 를 화면 크기에 맞춰 변환하고, 면적 계산용 표본점을 깐다.
-  /// 레이아웃 크기가 정해진 뒤 한 번만 실행된다.
-  void _prepare(Size size) {
-    if (_path != null) return;
+  /// 지역을 [size] 화면에 맞추는 변환.
+  Matrix4 _transformFor(Size size) {
     final b = widget.region.bounds;
     const pad = 36.0;
     final k = math.min(
       (size.width - pad * 2) / b.width,
       (size.height - pad * 2) / b.height,
     );
-    final m = Matrix4.identity()
+    return Matrix4.identity()
       ..translateByDouble(
         size.width / 2 - b.center.dx * k,
         size.height / 2 - b.center.dy * k,
@@ -100,73 +88,51 @@ class _ScratchPageState extends State<ScratchPage>
         1,
       )
       ..scaleByDouble(k, k, 1, 1);
-    _path = widget.region.path.transform(m.storage);
-
-    // 원본(지도) 좌표에서 내부 판정 후 화면 좌표로 옮긴다.
-    //
-    // 격자를 고정하면 다도해에서 표본이 말라붙는다. 1차로 성기게 훑어 육지 비율을
-    // 구한 뒤, 필요한 격자 크기를 역산해 한 번만 더 훑는다. 전수 확대가 아니라
-    // 2회 통과라 비용이 예측 가능하다.
-    var samples = _collectSamples(b, m, 40);
-    if (samples.length < minSamples) {
-      const first = 41 * 41;
-      final landRatio = samples.length / first;
-      final needed = landRatio <= 0
-          ? maxGrid
-          : math.sqrt(minSamples / landRatio).ceil();
-      final grid = needed.clamp(41, maxGrid);
-      samples = _collectSamples(b, m, grid);
-    }
-    _samples = samples;
-    _covered = List.filled(_samples.length, false);
-    _stats.reset(); // 준비 단계 프레임은 측정에서 제외
-    debugPrint('[SCRATCH] 준비 ${widget.region.name} '
-        '표본 ${_samples.length}개 (1점당 '
-        '${_samples.isEmpty ? 0 : (100 / _samples.length).toStringAsFixed(2)}%)');
   }
 
-  /// [grid] x [grid] 로 bounds 를 훑어 폴리곤 내부 점만 화면 좌표로 모은다.
-  List<Offset> _collectSamples(Rect b, Matrix4 m, int grid) {
-    final out = <Offset>[];
-    for (var i = 0; i <= grid; i++) {
-      final x = b.left + b.width * i / grid;
-      for (var j = 0; j <= grid; j++) {
-        final p = Offset(x, b.top + b.height * j / grid);
-        if (widget.region.path.contains(p)) {
-          out.add(MatrixUtils.transformPoint(m, p));
-        }
-      }
-    }
-    return out;
+  /// 지역 Path 변환과 표본 수집.
+  ///
+  /// **빌드 중에 호출하지 않는다.** 다도해 지역은 `Path.contains` 를 3만 회 넘게
+  /// 부르므로 프레임 예산을 훌쩍 넘긴다. 빌드에서는 로딩 상태를 한 프레임 보여주고
+  /// 다음 프레임에서 준비한다.
+  ///
+  /// 화면 크기가 바뀌면 다시 준비한다 — 회전이나 분할 화면에서 좌표계가 어긋나던
+  /// 문제도 여기서 함께 해소된다.
+  void _prepare(Size size) {
+    if (!mounted || _preparedFor == size) return;
+    final sw = Stopwatch()..start();
+    final m = _transformFor(size);
+    final path = widget.region.path.transform(m.storage);
+    final progress =
+        ScratchProgress.forRegion(widget.region, m, brush: brush);
+    sw.stop();
+
+    debugPrint('[SCRATCH] 준비 ${widget.region.name} '
+        '표본 ${progress.sampleCount}개 · 격자 ${progress.gridUsed} · '
+        '목표달성 ${progress.reachedTarget} · ${sw.elapsedMilliseconds}ms');
+
+    setState(() {
+      _path = path;
+      _progress = progress;
+      _preparedFor = size;
+      _preparing = false;
+      _strokes.clear(); // 좌표계가 바뀌었으므로 이전 자취는 버린다
+    });
+    _stats.reset(); // 준비 단계 프레임은 측정에서 제외
   }
 
   void _addPoint(Offset p, {required bool newStroke}) {
-    if (_done) return;
+    final progress = _progress;
+    if (_done || progress == null) return;
     final sw = Stopwatch()..start();
 
-    // 이전 점을 기억해 두고 **선분** 기준으로 덮인 표본을 센다.
-    // 화면에는 두 점 사이를 선으로 이어 지우는데 진행률만 점 기준으로 세면,
-    // 손가락을 빠르게 움직여 이벤트 간격이 벌어질수록 같은 자취인데도
-    // 진행률이 낮게 나온다. 즉 기기와 입력 속도에 따라 값이 달라진다.
-    Offset? prev;
     if (newStroke || _strokes.isEmpty) {
       _strokes.add([p]);
+      progress.startStroke();
     } else {
-      prev = _strokes.last.last;
       _strokes.last.add(p);
     }
-
-    for (var i = 0; i < _samples.length; i++) {
-      if (_covered[i]) continue;
-      final s = _samples[i];
-      final d = prev == null
-          ? (s - p).distance
-          : distancePointToSegment(s, prev, p);
-      if (d <= brush) {
-        _covered[i] = true;
-        _coveredCount++;
-      }
-    }
+    progress.addPoint(p);
     sw.stop();
     _panEvents++;
     _panMicros += sw.elapsedMicroseconds;
@@ -229,7 +195,18 @@ class _ScratchPageState extends State<ScratchPage>
               child: LayoutBuilder(
                 builder: (context, c) {
                   final size = Size(c.maxWidth, c.maxHeight);
-                  _prepare(size);
+                  // 준비는 빌드 밖에서 한다. 다도해는 Path.contains 를 3만 회 넘게
+                  // 부르므로 빌드 중에 하면 화면 전환이 눈에 띄게 멈춘다.
+                  if (_preparedFor != size) {
+                    if (!_preparing) {
+                      _preparing = true;
+                      WidgetsBinding.instance
+                          .addPostFrameCallback((_) => _prepare(size));
+                    }
+                    return const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    );
+                  }
                   return GestureDetector(
                     onPanStart: (e) =>
                         _addPoint(e.localPosition, newStroke: true),
