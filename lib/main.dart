@@ -115,12 +115,14 @@ class _MapSpikePageState extends State<MapSpikePage>
         Timer(const Duration(seconds: 4), () {
           if (!mounted) return;
           debugPrint('[BENCH] ${modes[i].label.padRight(12)} '
-              'fps=${_stats.estimatedFps.toStringAsFixed(1).padLeft(5)} '
+              'fps=${_stats.measuredFps.toStringAsFixed(1).padLeft(5)} '
+              '(여유 ${_stats.headroomFps.toStringAsFixed(0).padLeft(3)}) '
               'build=${_stats.avgBuildMs.toStringAsFixed(2).padLeft(6)}ms '
               'raster=${_stats.avgRasterMs.toStringAsFixed(2).padLeft(7)}ms '
               'worst=${_stats.worstTotalMs.toStringAsFixed(1).padLeft(6)}ms '
               'jank=${(_stats.jankRatio * 100).toStringAsFixed(0).padLeft(3)}% '
               'n=${_stats.frames} '
+              '구간=${_stats.elapsedSeconds.toStringAsFixed(1)}s '
               'ticks=$_ticks anim=${_bench.isAnimating}');
           i++;
           runMode();
@@ -433,14 +435,16 @@ class _StatsBar extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text('${stats.estimatedFps.toStringAsFixed(0)} fps',
+                    Text('${stats.measuredFps.toStringAsFixed(0)} fps',
                         style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: ok
                                 ? const Color(0xFF69DB7C)
                                 : const Color(0xFFFF8787))),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
+                    Text('여유 ${stats.headroomFps.toStringAsFixed(0)}'),
+                    const SizedBox(width: 10),
                     Text('예산 초과 ${(stats.jankRatio * 100).toStringAsFixed(0)}%'
                         ' · ${stats.frames}프레임'),
                   ],
@@ -448,7 +452,8 @@ class _StatsBar extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text('빌드 ${stats.avgBuildMs.toStringAsFixed(1)}ms  '
                     '래스터 ${stats.avgRasterMs.toStringAsFixed(1)}ms  '
-                    '최악 ${stats.worstTotalMs.toStringAsFixed(1)}ms'),
+                    '최악 ${stats.worstTotalMs.toStringAsFixed(1)}ms  '
+                    '구간 ${stats.elapsedSeconds.toStringAsFixed(1)}s'),
                 Text('지역 ${data.regions.length}개 · 정점 ${data.vertexCount}개 · '
                     '로딩 ${data.loadMs}ms'),
                 Text(selected == null

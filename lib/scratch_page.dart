@@ -141,9 +141,11 @@ class _ScratchPageState extends State<ScratchPage>
     debugPrint('[SCRATCH] 완료 ${widget.region.code} ${widget.region.name} '
         'ratio=${(_ratio * 100).toStringAsFixed(0)}% '
         'pan=$_panEvents회 handler=${avg}us '
-        'fps=${_stats.estimatedFps.toStringAsFixed(1)} '
+        'fps=${_stats.measuredFps.toStringAsFixed(1)} '
+        '(여유 ${_stats.headroomFps.toStringAsFixed(0)}) '
         'jank=${(_stats.jankRatio * 100).toStringAsFixed(0)}% '
-        'worst=${_stats.worstTotalMs.toStringAsFixed(1)}ms');
+        'worst=${_stats.worstTotalMs.toStringAsFixed(1)}ms '
+        '구간=${_stats.elapsedSeconds.toStringAsFixed(1)}s');
   }
 
   @override
