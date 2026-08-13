@@ -5,6 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mapscratch/region_art.dart';
 
+Rect _boundsOf(ArtShape s) {
+  final c = s.circle;
+  return c != null
+      ? Rect.fromCircle(center: Offset(c.$1, c.$2), radius: c.$3)
+      : parseSvgPath(s.d).getBounds();
+}
+
 void main() {
   group('SVG path 파서', () {
     test('절대 명령 M L Z 로 사각형을 그린다', () {
@@ -121,28 +128,91 @@ void main() {
       }
     });
 
-    test('모든 도형이 100×100 좌표계 안에 머문다', () {
-      // 좌표 오타는 눈으로 잡히지 않는다. 획 굵기를 감안해 여유를 둔다.
-      const slack = 14.0;
+    test('배경 도형이 bleed 한계를 넘지 않는다', () {
+      // 좌표 오타는 눈으로 잡히지 않는다. 배경은 잘리는 것이 전제이지만
+      // 한계를 넘으면 그려도 화면에 못 들어와 낭비다.
       for (final art in [...kLandmarkArt.values, ...kCategoryArt.values]) {
         for (final s in art.shapes) {
-          final c = s.circle;
-          final b = c != null
-              ? Rect.fromCircle(center: Offset(c.$1, c.$2), radius: c.$3)
-              : parseSvgPath(s.d).getBounds();
-          expect(b.left, greaterThanOrEqualTo(-slack), reason: art.name);
-          expect(b.top, greaterThanOrEqualTo(-slack), reason: art.name);
-          expect(b.right, lessThanOrEqualTo(100 + slack), reason: art.name);
-          expect(b.bottom, lessThanOrEqualTo(100 + slack), reason: art.name);
+          if (s.layer != ArtLayer.background) continue;
+          final b = _boundsOf(s);
+          // `Rect.contains` 는 오른쪽·아래 경계를 제외한다. 한계에 정확히
+          // 맞닿는 배경이 실패하므로 명시적으로 4방향을 inclusive 비교한다.
+          // (이 프로젝트는 `hit_test` 에서 같은 함정을 이미 한 번 겪었다.)
+          expect(b.left, greaterThanOrEqualTo(kBleedArea.left),
+              reason: '${art.name}: $b');
+          expect(b.top, greaterThanOrEqualTo(kBleedArea.top),
+              reason: '${art.name}: $b');
+          expect(b.right, lessThanOrEqualTo(kBleedArea.right),
+              reason: '${art.name}: $b');
+          expect(b.bottom, lessThanOrEqualTo(kBleedArea.bottom),
+              reason: '${art.name}: $b');
         }
       }
     });
 
-    test('랜드마크는 문화재·자연경관만 쓴다', () {
+    test('장면 구성 3종의 핵심 모티프가 안전 영역 안에 있다', () {
+      // B 배치는 잘림을 전제한다. 핵심이 안전 영역을 벗어나면 가장 불리한
+      // 지역(부산 서구, 가로:세로 1:3.73)에서 무엇인지 알 수 없게 된다.
+      // 획 굵기의 절반만 여유를 둔다.
+      const slack = 3.0;
+      final scene = <String, RegionArt>{
+        '첨성대': kLandmarkArt['47130']!,
+        '수원화성 팔달문': kLandmarkArt['41115']!,
+        '돌하르방': kLandmarkArt['50110']!,
+        '들판·농촌': kCategoryArt[ArtCategory.field]!,
+      };
+      for (final e in scene.entries) {
+        for (final s in e.value.shapes) {
+          if (s.layer != ArtLayer.core) continue;
+          final b = _boundsOf(s);
+          expect(b.left, greaterThanOrEqualTo(kSafeArea.left - slack),
+              reason: e.key);
+          expect(b.top, greaterThanOrEqualTo(kSafeArea.top - slack),
+              reason: e.key);
+          expect(b.right, lessThanOrEqualTo(kSafeArea.right + slack),
+              reason: e.key);
+          expect(b.bottom, lessThanOrEqualTo(kSafeArea.bottom + slack),
+              reason: e.key);
+        }
+      }
+    });
+
+    test('장면 구성 아트에는 배경 층이 있다', () {
+      // 배경이 없으면 "오브젝트 하나" 구성으로 되돌아간 것이다.
+      for (final art in [
+        kLandmarkArt['47130']!,
+        kLandmarkArt['41115']!,
+        kLandmarkArt['50110']!,
+        kCategoryArt[ArtCategory.field]!,
+      ]) {
+        expect(art.shapes.any((s) => s.layer == ArtLayer.background), isTrue,
+            reason: art.name);
+      }
+    });
+
+    test('배경은 핵심보다 먼저 그려진다', () {
+      // 리스트 순서가 곧 드로우 순서다. 배경이 뒤에 오면 핵심을 덮는다.
+      for (final art in [...kLandmarkArt.values, ...kCategoryArt.values]) {
+        final lastBg =
+            art.shapes.lastIndexWhere((s) => s.layer == ArtLayer.background);
+        final firstCore =
+            art.shapes.indexWhere((s) => s.layer == ArtLayer.core);
+        if (lastBg < 0 || firstCore < 0) continue;
+        expect(lastBg, lessThan(firstCore), reason: art.name);
+      }
+    });
+
+    test('랜드마크 소재는 권리 검토를 거친 것만 쓴다', () {
       // 현대 건축물은 저작권법 제35조 제2항의 판매 목적 복제 제약에 걸린다.
       // 목록에 새 소재를 넣을 때 이 테스트가 검토를 강제한다.
+      // 판정 근거는 `design/art-provenance.md` 에 한 행씩 남긴다.
+      //
+      // 현재는 전부 문화재·자연경관(보호기간 만료 또는 저작물 아님)이다.
+      // **예외를 추가하려면 provenance 에 위험과 결정 근거를 먼저 적는다.**
+      // (남산타워는 1971년 현대 건축물이라 이 조건을 만족하지 않는다.
+      //  사용자가 위험을 알고 채택했으므로 제작 시 provenance 에 근거를 남긴다.)
       const allowed = {
-        '첨성대', '수원화성 팔달문', '하회마을', '한라산', '순천만 갈대밭', '울릉도',
+        '첨성대', '수원화성 팔달문', '하회마을', '돌하르방', '순천만 갈대밭', '울릉도',
       };
       expect(kLandmarkArt.values.map((a) => a.name).toSet(), allowed);
     });

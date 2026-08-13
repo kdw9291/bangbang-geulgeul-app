@@ -33,6 +33,33 @@ class ArtPalette {
   static const accent2 = Color(0xFF4A7C6F);
 }
 
+/// 도형이 **잘려도 되는가**.
+///
+/// 배치 B(`artTargetFill`)는 아트를 지역보다 크게 놓고 지역 모양으로 잘라 비춘다.
+/// 무엇이 보일지는 지역 모양에 달려 있으므로, 아트를 "오브젝트 하나"로 그리면
+/// 잘렸을 때 무너진다 — 팔달문이 지붕만 남고 들판이 원만 남았던 것이 그 예다.
+///
+/// 그래서 두 층으로 나눈다.
+enum ArtLayer {
+  /// **핵심 모티프.** 무엇인지 알아보게 하는 부분이다.
+  /// [kSafeArea] 안에 들어와야 한다 — 어떤 크롭에서도 살아남아야 하기 때문이다.
+  core,
+
+  /// **배경.** 잘리는 것을 전제한다. 화면을 채우고 분위기를 만든다.
+  /// 반복되는 패턴(성벽·이랑·물결)이나 흩뿌림(별)이라 일부만 보여도 읽힌다.
+  /// [kBleedArea] 까지 넘어가도 된다.
+  background,
+}
+
+/// 핵심 모티프가 들어와야 하는 영역. 100×100 좌표계의 중앙 46×46.
+///
+/// 가장 불리한 지역이 기준이다. 부산 서구는 가로:세로가 1:3.73 이라
+/// 아트의 가운데 세로 띠만 보인다.
+const kSafeArea = Rect.fromLTRB(27, 27, 73, 73);
+
+/// 배경이 넘어가도 되는 한계. 이보다 크면 그려도 화면에 못 들어온다.
+const kBleedArea = Rect.fromLTRB(-25, -25, 125, 125);
+
 /// 아트를 이루는 도형 하나.
 ///
 /// SVG 의 `<path>` 와 `<circle>` 만 쓴다. `rect` 는 `d` 로 표현할 수 있어 따로 두지 않는다.
@@ -43,6 +70,7 @@ class ArtShape {
     this.fill,
     this.stroke = ArtPalette.ink,
     this.strokeWidth = 5.0,
+    this.layer = ArtLayer.core,
   }) : circle = null;
 
   /// 원. `d` 로도 그릴 수 있으나 호가 필요해 파서를 키우게 되므로 따로 둔다.
@@ -53,8 +81,11 @@ class ArtShape {
     this.fill,
     this.stroke = ArtPalette.ink,
     this.strokeWidth = 5.0,
+    this.layer = ArtLayer.core,
   })  : d = '',
         circle = (cx, cy, r);
+
+  final ArtLayer layer;
 
   /// SVG path 의 `d` 속성. 100×100 좌표계 기준이다.
   final String d;
@@ -505,15 +536,24 @@ final Map<ArtCategory, RegionArt> kCategoryArt = {
     ArtShape('M40 40 C50 46 54 46 62 40', stroke: _a),
     ArtShape('M38 62 C48 68 52 68 60 62', stroke: _a),
   ]),
+  // 장면 구성: 논 이랑이 좌우로 반복되고(배경) 가운데 나무 한 그루(핵심).
+  // 이랑은 반복 패턴이라 잘려도 "논밭"으로 읽힌다. B 배치에서 원만 남아
+  // 무엇인지 알 수 없었던 것을 이 구조로 해결한다.
+  //
+  // 카테고리는 206개 이상이 재사용하므로 장면 구성 전환의 효과가 가장 크다.
   ArtCategory.field: const RegionArt('들판·농촌', [
-    ArtShape('M10 74 C30 64 50 80 70 70 C80 65 86 66 90 68', stroke: _a2),
-    ArtShape('M28 62 V44'),
-    ArtShape.circle(28, 38, 8, fill: _a),
-    ArtShape('M56 66 V50'),
-    ArtShape.circle(56, 44, 8, fill: _a),
-    ArtShape('M78 62 V48'),
-    ArtShape.circle(78, 42, 8, fill: _a),
-    ArtShape('M10 86 h80'),
+    // 배경 — 능선과 논 이랑
+    ArtShape('M-25 40 C-5 33 15 37 35 32 C55 27 75 36 125 30',
+        stroke: _a2, strokeWidth: 4, layer: ArtLayer.background),
+    ArtShape('M-25 72 C0 65 25 77 50 70 C75 63 100 74 125 68',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 86 C0 79 25 91 50 84 C75 77 100 88 125 82',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 100 C0 93 25 105 50 98 C75 91 100 102 125 96',
+        stroke: _a2, layer: ArtLayer.background),
+    // 핵심 — 나무 한 그루
+    ArtShape('M50 72 V52'),
+    ArtShape.circle(50, 42, 14, fill: _a),
   ]),
 };
 
@@ -524,23 +564,57 @@ final Map<ArtCategory, RegionArt> kCategoryArt = {
 /// 소재별 권리 검토는 `design/art-provenance.md` 참고.
 final Map<String, RegionArt> kLandmarkArt = {
   // 47130 경주시 — 첨성대 (국보, 7세기)
+  //
+  // 장면 구성: 별이 흩뿌려진 밤하늘(배경) 위에 첨성대(핵심).
+  // 천문대라는 성격이 배경으로 드러나고, 별은 흩뿌림이라 일부만 보여도 읽힌다.
   '47130': const RegionArt('첨성대', [
-    ArtShape('M33 78 C31 52 37 32 50 22 C63 32 69 52 67 78 Z', fill: _p),
-    ArtShape('M43 46 h14 v14 h-14 Z', fill: _a),
-    ArtShape('M36 22 h28', stroke: _a2),
-    ArtShape('M40 14 h20'),
-    ArtShape('M30 78 h40', stroke: _a),
-    ArtShape('M24 86 h52'),
+    // 배경 — 언덕과 별
+    ArtShape('M-25 88 C0 76 24 92 50 84 C76 76 100 90 125 82 L125 125 L-25 125 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape.circle(10, 16, 3,
+        fill: _a, stroke: null, layer: ArtLayer.background),
+    ArtShape.circle(31, 8, 2.5,
+        fill: _a, stroke: null, layer: ArtLayer.background),
+    ArtShape.circle(74, 13, 3,
+        fill: _a, stroke: null, layer: ArtLayer.background),
+    ArtShape.circle(92, 30, 2.5,
+        fill: _a, stroke: null, layer: ArtLayer.background),
+    ArtShape.circle(16, 44, 2.5,
+        fill: _a, stroke: null, layer: ArtLayer.background),
+    ArtShape.circle(88, 60, 2.5,
+        fill: _a, stroke: null, layer: ArtLayer.background),
+    ArtShape.circle(6, 70, 2,
+        fill: _a, stroke: null, layer: ArtLayer.background),
+    // 핵심 — 첨성대
+    ArtShape('M38 71 C36 53 40 39 50 32 C60 39 64 53 62 71 Z', fill: _p),
+    ArtShape('M46 50 h8 v8 h-8 Z', fill: _a),
+    ArtShape('M42 32 h16', stroke: _a2),
+    ArtShape('M45 28 h10'),
+    ArtShape('M34 71 h32'),
   ]),
 
   // 41115 수원시팔달구 — 수원화성 팔달문 (사적, 18세기)
+  //
+  // 장면 구성: 성벽이 좌우로 뻗고(배경) 가운데 문루(핵심).
+  // 여장(성벽 위 凸 모양)이 반복이라 좌우가 잘려도 "성곽"으로 읽힌다.
+  // B 배치에서 지붕만 남아 알아보기 어려웠던 것을 이 구조로 해결한다.
   '41115': const RegionArt('수원화성 팔달문', [
-    ArtShape('M22 86 V58 h56 v28', fill: _p),
-    ArtShape('M40 86 V70 C40 62 60 62 60 70 V86 Z', fill: _a),
-    ArtShape('M14 58 L50 44 L86 58 Z', fill: _p),
-    ArtShape('M26 44 L50 34 L74 44', fill: _p, stroke: _a2),
-    ArtShape('M50 34 v-8', stroke: _a2),
-    ArtShape('M12 86 h76'),
+    // 배경 — 좌우로 뻗는 성벽과 여장
+    ArtShape('M-25 62 H32 V76 H-25 Z', fill: _p, layer: ArtLayer.background),
+    ArtShape('M68 62 H125 V76 H68 Z', fill: _p, layer: ArtLayer.background),
+    ArtShape(
+        'M-20 62 v-7 h7 v7 M-6 62 v-7 h7 v7 M8 62 v-7 h7 v7 M22 62 v-7 h7 v7',
+        stroke: _a2, strokeWidth: 4, layer: ArtLayer.background),
+    ArtShape(
+        'M71 62 v-7 h7 v7 M85 62 v-7 h7 v7 M99 62 v-7 h7 v7 M113 62 v-7 h7 v7',
+        stroke: _a2, strokeWidth: 4, layer: ArtLayer.background),
+    ArtShape('M-25 76 H125', layer: ArtLayer.background),
+    // 핵심 — 문루
+    ArtShape('M36 72 V57 h28 v15', fill: _p),
+    ArtShape('M44 72 V64 C44 58 56 58 56 64 V72 Z', fill: _a),
+    ArtShape('M30 57 L50 47 L70 57 Z', fill: _p),
+    ArtShape('M37 47 L50 40 L63 47', fill: _p, stroke: _a2),
+    ArtShape('M50 40 V34', stroke: _a2),
   ]),
 
   // 47170 안동시 — 하회마을 (세계유산, 조선)
@@ -553,12 +627,30 @@ final Map<String, RegionArt> kLandmarkArt = {
     ArtShape('M58 58 h18 v12 h-18 Z', fill: _p),
   ]),
 
-  // 50110 제주시 — 한라산 (국립공원, 자연경관)
-  '50110': const RegionArt('한라산', [
-    ArtShape('M8 82 L34 44 L46 60 L62 30 L92 82 Z', fill: _p),
-    ArtShape('M55 41 L62 30 L70 45 C64 49 60 48 55 41 Z', fill: _a2),
-    ArtShape('M26 56 L34 44 L41 53', stroke: _a2),
-    ArtShape('M8 82 h84', stroke: _a),
+  // 50110 제주시 — 돌하르방 (조선 후기 석상)
+  //
+  // 장면 구성: 오름 능선과 현무암 밭담(배경) 앞에 돌하르방(핵심).
+  // 밭담은 반복 패턴이라 좌우가 잘려도 제주로 읽힌다.
+  //
+  // 제주는 시군구가 2개뿐이라 랜드마크를 하나만 둔다(2026-08-13 사용자 결정).
+  // 이전에 만든 한라산 아트는 이 결정으로 목록에서 빠졌다.
+  '50110': const RegionArt('돌하르방', [
+    // 배경 — 오름 능선과 밭담
+    ArtShape('M-25 40 C-5 32 12 36 30 30 C48 24 64 34 125 28',
+        stroke: _a2, strokeWidth: 4, layer: ArtLayer.background),
+    ArtShape('M-25 82 H125', stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 92 H125', stroke: _a2, layer: ArtLayer.background),
+    ArtShape(
+        'M-18 82 V92 M-2 82 V92 M14 82 V92 M30 82 V92 M46 82 V92 '
+        'M62 82 V92 M78 82 V92 M94 82 V92 M110 82 V92',
+        stroke: _a2, strokeWidth: 3, layer: ArtLayer.background),
+    // 핵심 — 돌하르방
+    ArtShape('M39 45 C40 34 44 29 50 29 C56 29 60 34 61 45 Z', fill: _p),
+    ArtShape('M40 45 C38 58 41 70 42 72 H58 C59 70 62 58 60 45 Z', fill: _p),
+    ArtShape.circle(45, 52, 3.2, fill: ArtPalette.ink, stroke: null),
+    ArtShape.circle(55, 52, 3.2, fill: ArtPalette.ink, stroke: null),
+    ArtShape('M50 55 v6'),
+    ArtShape('M44 66 h5 M51 66 h5', stroke: _a, strokeWidth: 4),
   ]),
 
   // 12150 순천시 — 순천만 갈대밭 (습지, 자연경관)

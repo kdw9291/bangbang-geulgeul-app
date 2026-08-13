@@ -38,13 +38,13 @@ void main() {
       '26140': '부산서구 · [바다]',
     };
 
-    // 배치 방식 두 가지를 위아래로 나란히 그려 비교한다.
-    // A: 지역 안에 들어가도록 줄인다 (artTargetRectIn)
-    // B: 지역을 덮을 만큼 키우고 지역 모양으로 비춘다 (artTargetFill)
+    // 위: 장면 구성 3종을 원본과 극단 크롭으로 본다.
+    // 아래: 파일럿 10개 지역을 채택 배치(B)로 본다.
     const cell = 300.0;
     const cols = 5;
     const label = 34.0;
-    final rows = (pilot.length / cols).ceil() * 2;
+    const sceneRows = 3; // 4종 × (원본·세로크롭·가로크롭) = 12칸 → 3행
+    final rows = sceneRows + (pilot.length / cols).ceil();
     final w = cell * cols;
     final h = (cell + label) * rows;
 
@@ -54,7 +54,67 @@ void main() {
         Rect.fromLTWH(0, 0, w, h), Paint()..color = const Color(0xFF15141B));
 
     var i = 0;
-    for (final variant in ['A', 'B']) {
+
+    // ---- 장면 구성 3종: 원본과 극단 크롭 ----
+    //
+    // 크롭 비율은 실제 지역에서 가져왔다. 부산 서구는 가로:세로 1:3.73 이라
+    // 아트의 가운데 세로 띠만 보이고, 서귀포시는 0.52 라 가로 띠만 보인다.
+    // 핵심 모티프가 안전 영역 안에 있으면 두 경우 모두 살아남아야 한다.
+    final scenes = <String, RegionArt>{
+      '첨성대': kLandmarkArt['47130']!,
+      '팔달문': kLandmarkArt['41115']!,
+      '돌하르방': kLandmarkArt['50110']!,
+      '들판(카테고리)': kCategoryArt[ArtCategory.field]!,
+    };
+    for (final crop in ['원본', '세로 1:3.7', '가로 3.7:1']) {
+      for (final e in scenes.entries) {
+        final ox = (i % cols) * cell;
+        final oy = (i ~/ cols) * (cell + label);
+        i++;
+
+        canvas.save();
+        canvas.translate(ox, oy);
+
+        // 크롭 창. 아트는 항상 셀 전체를 채우고, 창 모양만 바뀐다.
+        final window = switch (crop) {
+          '세로 1:3.7' =>
+            Rect.fromCenter(center: const Offset(150, 150), width: 78, height: 290),
+          '가로 3.7:1' =>
+            Rect.fromCenter(center: const Offset(150, 150), width: 290, height: 78),
+          _ => const Rect.fromLTWH(5, 5, 290, 290),
+        };
+
+        canvas.drawRect(window, Paint()..color = const Color(0xFF4E8ED9));
+        canvas.save();
+        canvas.clipRect(window);
+        paintRegionArt(
+            canvas, e.value, const Rect.fromLTWH(5, 5, 290, 290));
+        canvas.restore();
+        canvas.drawRect(
+          window,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2
+            ..color = Colors.white.withValues(alpha: .35),
+        );
+        canvas.restore();
+
+        final tp = TextPainter(
+          text: TextSpan(
+            text: '[$crop] ${scenes.keys.toList().indexOf(e.key) + 1}',
+            style: const TextStyle(
+                color: Colors.white70, fontSize: 13, height: 1.3),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout(maxWidth: cell - 8);
+        tp.paint(canvas, Offset(ox + (cell - tp.width) / 2, oy + cell + 4));
+      }
+    }
+    // 다음 행 머리로 넘긴다.
+    i = ((i + cols - 1) ~/ cols) * cols;
+
+    // ---- 파일럿 10개 지역: 채택 배치(B) ----
+    for (final variant in ['B']) {
       for (final entry in pilot.entries) {
       final region = data.regions.firstWhere((r) => r.code == entry.key);
       final ox = (i % cols) * cell;
