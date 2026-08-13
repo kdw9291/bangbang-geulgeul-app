@@ -5,13 +5,14 @@ import 'package:flutter/material.dart';
 
 import 'map_data.dart';
 
-/// 렌더 방식. T2 지도 렌더에서 어느 쪽이 실기기에서 버티는지 비교하기 위한 것.
+/// 렌더 방식 — **어떻게 그리는가**만 나타낸다.
+///
+/// 초기 구현은 획 표시 여부까지 이 열거형에 섞어 놓았다. 그 결과 채택안인
+/// [picture] 는 구조적으로 획을 그릴 수 없었고, 정작 실제로 쓸 조합(Picture + 획)은
+/// 한 번도 측정되지 않았다. 두 축을 [RenderConfig] 로 분리했다.
 enum RenderMode {
-  /// 매 프레임 256개 Path 를 채우고 획까지 그린다 (최초 구현).
+  /// 매 프레임 256개 Path 를 직접 그린다 (최초 구현).
   direct,
-
-  /// 획을 생략하고 채우기만 한다. 획이 얼마나 비싼지 보기 위한 대조군.
-  fillOnly,
 
   /// 지도를 ui.Picture 로 한 번 기록해두고 매 프레임 재생만 한다.
   picture,
@@ -20,15 +21,40 @@ enum RenderMode {
   pictureBoundary;
 
   String get label => switch (this) {
-        RenderMode.direct => '직접+획',
-        RenderMode.fillOnly => '직접,획없음',
-        RenderMode.picture => 'Picture캐시',
+        RenderMode.direct => '직접',
+        RenderMode.picture => 'Picture',
         RenderMode.pictureBoundary => 'Picture+경계',
       };
 
   bool get usesPicture =>
       this == RenderMode.picture || this == RenderMode.pictureBoundary;
-  bool get drawsStroke => this == RenderMode.direct;
+}
+
+/// 렌더 방식과 셀 구분 획 표시를 함께 나타내는 설정.
+///
+/// 흰 실선은 셀 경계를 구분하는 데 필요하므로 제품에서는 켠 상태가 기본이다.
+@immutable
+class RenderConfig {
+  const RenderConfig(this.mode, {this.strokes = true});
+
+  /// 앱이 실제로 쓰는 설정. 문서상 채택안과 일치해야 한다.
+  static const adopted = RenderConfig(RenderMode.picture);
+
+  final RenderMode mode;
+  final bool strokes;
+
+  String get label => '${mode.label}${strokes ? '+획' : ''}';
+  bool get usesPicture => mode.usesPicture;
+
+  @override
+  bool operator ==(Object other) =>
+      other is RenderConfig && other.mode == mode && other.strokes == strokes;
+
+  @override
+  int get hashCode => Object.hash(mode, strokes);
+
+  @override
+  String toString() => label;
 }
 
 void _paintMap(
@@ -125,7 +151,7 @@ class KoreaMapPainter extends CustomPainter {
     required this.showSidoLines,
     required this.seaColor,
     required this.foilColor,
-    required this.mode,
+    required this.config,
     required this.cache,
     this.selected,
   });
@@ -135,7 +161,7 @@ class KoreaMapPainter extends CustomPainter {
   final bool showSidoLines;
   final Color seaColor;
   final Color foilColor;
-  final RenderMode mode;
+  final RenderConfig config;
   final MapPictureCache cache;
 
   /// T4 지역 판정으로 선택된 지역. Picture 캐시를 무효화하지 않도록
@@ -148,12 +174,12 @@ class KoreaMapPainter extends CustomPainter {
     canvas.save();
     canvas.scale(size.width / data.size.width);
 
-    if (mode.usesPicture) {
+    if (config.usesPicture) {
       canvas.drawPicture(cache.obtain(
-          data, scratched, showSidoLines, mode.drawsStroke, foilColor));
+          data, scratched, showSidoLines, config.strokes, foilColor));
     } else {
-      _paintMap(canvas, data, scratched, showSidoLines, mode.drawsStroke,
-          foilColor);
+      _paintMap(
+          canvas, data, scratched, showSidoLines, config.strokes, foilColor);
     }
 
     final sel = selected;
@@ -174,7 +200,7 @@ class KoreaMapPainter extends CustomPainter {
   @override
   bool shouldRepaint(KoreaMapPainter old) =>
       !identical(old.data, data) ||
-      old.mode != mode ||
+      old.config != config ||
       old.showSidoLines != showSidoLines ||
       old.seaColor != seaColor ||
       old.foilColor != foilColor ||

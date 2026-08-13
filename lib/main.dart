@@ -47,7 +47,10 @@ class _MapSpikePageState extends State<MapSpikePage>
   Object? _error;
   bool _sidoLines = true;
   bool _benchmarking = false;
-  RenderMode _mode = RenderMode.direct;
+  /// 일반 실행은 **문서상 채택안과 같은 설정**으로 시작한다.
+  /// 초기 구현은 `direct` 로 시작해, 채택했다고 적어둔 경로가 실제로는
+  /// 한 번도 실행되지 않는 상태였다.
+  RenderConfig _config = RenderConfig.adopted;
 
   /// **제자리에서 수정하지 않는다.** painter 가 이 Set 을 그대로 들고 있어서,
   /// `add`/`clear` 로 고치면 이전 painter 와 새 painter 가 같은 객체를 보게 되고
@@ -96,9 +99,18 @@ class _MapSpikePageState extends State<MapSpikePage>
 
   /// 네 가지 렌더 방식을 순서대로 돌려 각각의 프레임 성능을 로그로 남긴다.
   /// 한 번의 실행으로 비교표가 나오도록 한 것.
+  /// 비교할 설정. **채택안(Picture+획)이 반드시 포함돼야 한다** — 실제로 쓰는
+  /// 조합을 측정하지 않으면 성능 근거가 되지 않는다.
+  static const _benchConfigs = <RenderConfig>[
+    RenderConfig(RenderMode.direct), // 직접+획 (기준선)
+    RenderConfig.adopted, // Picture+획 ← 채택안
+    RenderConfig(RenderMode.picture, strokes: false), // 획 비용 분리
+    RenderConfig(RenderMode.pictureBoundary), // Picture+경계+획
+  ];
+
   void _runAutoBench() {
     _toggleBenchmark();
-    final modes = RenderMode.values;
+    final modes = _benchConfigs;
     var i = 0;
 
     void runMode() {
@@ -106,7 +118,7 @@ class _MapSpikePageState extends State<MapSpikePage>
         if (mounted) debugPrint('[BENCH] 측정 종료');
         return;
       }
-      setState(() => _mode = modes[i]);
+      setState(() => _config = modes[i]);
       // 워밍업 2.5초는 버린다 — 셰이더 컴파일과 첫 래스터가 섞이면 정상 상태가 아니다.
       Timer(const Duration(milliseconds: 2500), () {
         if (!mounted) return;
@@ -114,7 +126,7 @@ class _MapSpikePageState extends State<MapSpikePage>
         _ticks = 0;
         Timer(const Duration(seconds: 4), () {
           if (!mounted) return;
-          debugPrint('[BENCH] ${modes[i].label.padRight(12)} '
+          debugPrint('[BENCH] ${modes[i].label.padRight(16)} '
               'fps=${_stats.measuredFps.toStringAsFixed(1).padLeft(5)} '
               '(여유 ${_stats.headroomFps.toStringAsFixed(0).padLeft(3)}) '
               'build=${_stats.avgBuildMs.toStringAsFixed(2).padLeft(6)}ms '
@@ -290,13 +302,13 @@ class _MapSpikePageState extends State<MapSpikePage>
             showSidoLines: _sidoLines,
             seaColor: const Color(0xFF16303D),
             foilColor: const Color(0xFF474553),
-            mode: _mode,
+            config: _config,
             cache: _cache,
             selected: _selected,
           ),
           isComplex: true,
         );
-        if (_mode == RenderMode.pictureBoundary) {
+        if (_config.mode == RenderMode.pictureBoundary) {
           map = RepaintBoundary(child: map);
         }
         // GestureDetector 를 InteractiveViewer 안쪽에 두면 확대·이동 변환의

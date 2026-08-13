@@ -24,7 +24,7 @@ void main() {
         showSidoLines: true,
         seaColor: const Color(0xFF16303D),
         foilColor: const Color(0xFF474553),
-        mode: RenderMode.picture,
+        config: RenderConfig.adopted,
         cache: cache ?? MapPictureCache(),
       );
 
@@ -56,11 +56,44 @@ void main() {
       showSidoLines: true,
       seaColor: const Color(0xFF16303D),
       foilColor: const Color(0xFF474553),
-      mode: RenderMode.picture,
+      config: RenderConfig.adopted,
       cache: MapPictureCache(),
       selected: data.regions.first,
     );
     expect(b.shouldRepaint(a), isTrue);
+  });
+
+  // 앱이 문서상 채택안과 다른 설정으로 실행되던 회귀를 막는다.
+  test('앱 기본 설정은 Picture 캐시 + 획 이다', () {
+    expect(RenderConfig.adopted.mode, RenderMode.picture);
+    expect(RenderConfig.adopted.strokes, isTrue);
+    expect(RenderConfig.adopted.label, 'Picture+획');
+  });
+
+  test('설정이 바뀌면 다시 그린다', () {
+    final base = <String>{};
+    final withStroke = painter(base);
+    final noStroke = KoreaMapPainter(
+      data: data,
+      scratched: base,
+      showSidoLines: true,
+      seaColor: const Color(0xFF16303D),
+      foilColor: const Color(0xFF474553),
+      config: const RenderConfig(RenderMode.picture, strokes: false),
+      cache: MapPictureCache(),
+    );
+    expect(noStroke.shouldRepaint(withStroke), isTrue,
+        reason: '획 표시가 달라지면 다시 그려야 한다');
+  });
+
+  test('Picture 캐시는 획 표시가 바뀌면 다시 기록한다', () {
+    final cache = MapPictureCache();
+    final withStroke = cache.obtain(
+        data, const <String>{}, true, true, const Color(0xFF474553));
+    final noStroke = cache.obtain(
+        data, const <String>{}, true, false, const Color(0xFF474553));
+    expect(identical(withStroke, noStroke), isFalse);
+    cache.dispose();
   });
 
   test('Picture 캐시는 긁은 내용이 바뀌면 다시 기록한다', () {
