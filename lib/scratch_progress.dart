@@ -85,9 +85,22 @@ class ScratchProgress {
     Region region,
     Matrix4 transform, {
     required double brush,
+  }) =>
+      forShape(region.path, region.bounds, transform, brush: brush);
+
+  /// 임의의 형상에 대한 진행률.
+  ///
+  /// 다도해는 긁기 화면에서 섬을 모아 재배치하므로(`island_layout.dart`)
+  /// 표본도 **재배치된 형상 위에서** 모아야 한다. 원본 지역 좌표로 모으면
+  /// 화면에 그려지는 것과 다른 곳을 세게 된다.
+  static ScratchProgress forShape(
+    Path shape,
+    Rect bounds,
+    Matrix4 transform, {
+    required double brush,
   }) {
     const pilot = 40;
-    var samples = _collect(region.path, region.bounds, transform, pilot);
+    var samples = _collect(shape, bounds, transform, pilot);
     var grid = pilot;
 
     if (samples.length < targetSamples) {
@@ -97,7 +110,7 @@ class ScratchProgress {
           ? maxGrid
           : math.sqrt(targetSamples / landRatio).ceil();
       grid = needed.clamp(pilot + 1, maxGrid);
-      samples = _collect(region.path, region.bounds, transform, grid);
+      samples = _collect(shape, bounds, transform, grid);
     }
 
     return ScratchProgress._(

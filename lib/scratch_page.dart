@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import 'frame_stats.dart';
+import 'island_layout.dart';
 import 'map_data.dart';
 import 'region_art.dart';
 import 'scratch_progress.dart';
@@ -44,6 +45,7 @@ class _ScratchPageState extends State<ScratchPage>
 
   Path? _path; // 화면 좌표로 변환된 지역 Path
   Rect? _artTarget; // 아트를 놓을 자리 (준비 단계에서 한 번 계산)
+  Path? _artClip; // 다도해에서 아트를 가둘 섬. null 이면 지역 전체
   ScratchProgress? _progress;
   Size? _preparedFor; // 어떤 화면 크기로 준비했는지
   bool _preparing = false;
@@ -76,9 +78,10 @@ class _ScratchPageState extends State<ScratchPage>
     super.dispose();
   }
 
-  /// 지역을 [size] 화면에 맞추는 변환.
-  Matrix4 _transformFor(Size size) {
-    final b = widget.region.bounds;
+  /// 형상 [b] 를 [size] 화면에 맞추는 변환.
+  ///
+  /// 대부분은 지역 `bounds` 지만, 다도해는 재배치된 형상의 bounds 를 쓴다.
+  Matrix4 _transformFor(Size size, Rect b) {
     const pad = 36.0;
     final k = math.min(
       (size.width - pad * 2) / b.width,
@@ -105,10 +108,20 @@ class _ScratchPageState extends State<ScratchPage>
   void _prepare(Size size) {
     if (!mounted || _preparedFor == size) return;
     final sw = Stopwatch()..start();
-    final m = _transformFor(size);
-    final path = widget.region.path.transform(m.storage);
+    final region = widget.region;
+
+    // 다도해는 섬을 모아 재배치한다. 옹진군은 육지가 bounds 의 0.93% 뿐이라
+    // 그대로 화면에 맞추면 사용자가 빈 바다를 긁게 된다. 상세는 `island_layout.dart`.
+    final layout =
+        needsPacking(region.rings, region.bounds) ? packIslands(region.rings) : null;
+    final shape = layout == null ? region.path : buildPackedPath(layout);
+    final shapeBounds = layout == null ? region.bounds : layout.bounds;
+
+    final m = _transformFor(size, shapeBounds);
+    final path = shape.transform(m.storage);
+    // 표본도 **재배치된 형상 위에서** 모아야 화면에 그려지는 것과 일치한다.
     final progress =
-        ScratchProgress.forRegion(widget.region, m, brush: brush);
+        ScratchProgress.forShape(shape, shapeBounds, m, brush: brush);
 
     // 아트 배치도 여기서 정한다. Path.contains 를 여러 번 부르므로
     // 렌더 중에 하면 매 입력 프레임에 얹힌다.
@@ -116,16 +129,25 @@ class _ScratchPageState extends State<ScratchPage>
     // 창처럼 써서 비춘다. A(`artTargetRectIn`) 는 지역 안에 맞추려고 줄이는데,
     // 육지가 가늘거나 흩어진 지역(종로구·옹진군·부산 서구)에서 안 보일 만큼
     // 작아졌다. 비교 렌더는 `design/art-pilot-placement.png` 참고.
+    //
+    // 다도해는 아트를 지역 전체에 걸치면 섬마다 파편으로 잘려 알아볼 수 없다.
+    // **가장 큰 섬 하나에만** 놓는다 (`design/art-island-repack.png`).
     Rect? artTarget;
-    if (artForRegion(widget.region.code) != null) {
-      artTarget = artTargetFill(
-        path,
-        largestRingBounds(
-          widget.region.rings,
-          scale: m.storage[0],
-          offset: Offset(m.storage[12], m.storage[13]),
-        ),
-      );
+    Path? artClip;
+    if (artForRegion(region.code) != null) {
+      if (layout != null) {
+        artClip = buildLargestIslandPath(layout).transform(m.storage);
+        artTarget = artTargetFill(artClip, artClip.getBounds());
+      } else {
+        artTarget = artTargetFill(
+          path,
+          largestRingBounds(
+            region.rings,
+            scale: m.storage[0],
+            offset: Offset(m.storage[12], m.storage[13]),
+          ),
+        );
+      }
     }
     sw.stop();
 
@@ -136,6 +158,7 @@ class _ScratchPageState extends State<ScratchPage>
     setState(() {
       _path = path;
       _artTarget = artTarget;
+      _artClip = artClip;
       _progress = progress;
       _preparedFor = size;
       _preparing = false;
@@ -246,6 +269,7 @@ class _ScratchPageState extends State<ScratchPage>
                           foilOpacity: 1 - _fade.value,
                           art: artForRegion(widget.region.code),
                           artTarget: _artTarget,
+                          artClip: _artClip,
                           artCache: _artCache,
                         ),
                       ),
@@ -314,6 +338,7 @@ class _ScratchPainter extends CustomPainter {
     required this.foilOpacity,
     required this.art,
     required this.artTarget,
+    required this.artClip,
     required this.artCache,
   });
 
@@ -328,6 +353,9 @@ class _ScratchPainter extends CustomPainter {
   /// 아트를 놓을 자리. 준비 단계에서 한 번 계산한다 — `Path.contains` 를
   /// 여러 번 부르므로 매 입력 프레임에 다시 구하면 안 된다.
   final Rect? artTarget;
+
+  /// 다도해에서 아트를 가둘 섬 하나. `null` 이면 지역 전체로 가둔다.
+  final Path? artClip;
   final RegionArtCache artCache;
 
   @override
@@ -343,7 +371,7 @@ class _ScratchPainter extends CustomPainter {
     // 그리면 그 비용이 전부 얹힌다. Picture 로 기록해두고 재생만 한다.
     if (art case final a? when artTarget != null) {
       canvas.save();
-      canvas.clipPath(path);
+      canvas.clipPath(artClip ?? path);
       canvas.drawPicture(artCache.obtain(a, artTarget!));
       canvas.restore();
     }
