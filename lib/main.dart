@@ -1,0 +1,507 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+
+import 'frame_stats.dart';
+import 'hit_test.dart';
+import 'map_data.dart';
+import 'map_painter.dart';
+import 'scratch_page.dart';
+
+void main() => runApp(const MapScratchApp());
+
+class MapScratchApp extends StatelessWidget {
+  const MapScratchApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: '방방긁긁',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFA8752A)),
+        useMaterial3: true,
+      ),
+      home: const MapSpikePage(),
+    );
+  }
+}
+
+/// T2 지도 렌더 스파이크.
+/// 목적은 두 가지다 — 256개 폴리곤이 렌더되는가, 확대·이동 중 60fps 가 유지되는가.
+class MapSpikePage extends StatefulWidget {
+  const MapSpikePage({super.key});
+
+  @override
+  State<MapSpikePage> createState() => _MapSpikePageState();
+}
+
+class _MapSpikePageState extends State<MapSpikePage>
+    with SingleTickerProviderStateMixin {
+  final _tc = TransformationController();
+  final _stats = FrameStats();
+  late final AnimationController _bench;
+
+  MapData? _data;
+  Object? _error;
+  bool _sidoLines = true;
+  bool _benchmarking = false;
+  RenderMode _mode = RenderMode.direct;
+
+  /// **제자리에서 수정하지 않는다.** painter 가 이 Set 을 그대로 들고 있어서,
+  /// `add`/`clear` 로 고치면 이전 painter 와 새 painter 가 같은 객체를 보게 되고
+  /// `shouldRepaint` 가 변경을 감지하지 못한다. 항상 새 스냅샷으로 교체한다.
+  Set<String> _scratched = const <String>{};
+  final _cache = MapPictureCache();
+
+  /// 애니메이션 틱 수. 프레임이 안 나올 때 "애니메이션이 멈춘 것"인지
+  /// "그리다가 못 따라가는 것"인지 구분하려면 이 값이 필요하다.
+  int _ticks = 0;
+
+  RegionHitTester? _hitTester;
+  Region? _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _stats.start();
+    _bench = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    )..addListener(_driveBenchmark);
+    _load();
+  }
+
+  /// `--dart-define=AUTOBENCH=true` 로 실행하면 화면을 보지 않고
+  /// 로그만으로 프레임 성능을 측정할 수 있다.
+  static const bool _autoBench = bool.fromEnvironment('AUTOBENCH');
+
+  Future<void> _load() async {
+    try {
+      final d = await MapData.load();
+      if (!mounted) return;
+      setState(() {
+        _data = d;
+        _hitTester = RegionHitTester(d.regions);
+      });
+      debugPrint('[BENCH] 로딩 ${d.loadMs}ms '
+          '(읽기 ${d.readMs}ms · JSON ${d.decodeMs}ms · Path ${d.pathMs}ms) · '
+          '지역 ${d.regions.length}개 · 정점 ${d.vertexCount}개');
+      if (_autoBench) _runAutoBench();
+    } catch (e) {
+      if (mounted) setState(() => _error = e);
+    }
+  }
+
+  /// 네 가지 렌더 방식을 순서대로 돌려 각각의 프레임 성능을 로그로 남긴다.
+  /// 한 번의 실행으로 비교표가 나오도록 한 것.
+  void _runAutoBench() {
+    _toggleBenchmark();
+    final modes = RenderMode.values;
+    var i = 0;
+
+    void runMode() {
+      if (!mounted || i >= modes.length) {
+        if (mounted) debugPrint('[BENCH] 측정 종료');
+        return;
+      }
+      setState(() => _mode = modes[i]);
+      // 워밍업 2.5초는 버린다 — 셰이더 컴파일과 첫 래스터가 섞이면 정상 상태가 아니다.
+      Timer(const Duration(milliseconds: 2500), () {
+        if (!mounted) return;
+        _stats.reset();
+        _ticks = 0;
+        Timer(const Duration(seconds: 4), () {
+          if (!mounted) return;
+          debugPrint('[BENCH] ${modes[i].label.padRight(12)} '
+              'fps=${_stats.estimatedFps.toStringAsFixed(1).padLeft(5)} '
+              'build=${_stats.avgBuildMs.toStringAsFixed(2).padLeft(6)}ms '
+              'raster=${_stats.avgRasterMs.toStringAsFixed(2).padLeft(7)}ms '
+              'worst=${_stats.worstTotalMs.toStringAsFixed(1).padLeft(6)}ms '
+              'jank=${(_stats.jankRatio * 100).toStringAsFixed(0).padLeft(3)}% '
+              'n=${_stats.frames} '
+              'ticks=$_ticks anim=${_bench.isAnimating}');
+          i++;
+          runMode();
+        });
+      });
+    }
+
+    runMode();
+  }
+
+  /// 손으로 드래그하면 측정이 들쭉날쭉하다. 일정한 확대·이동을 반복시켜
+  /// 지속 부하 상태의 프레임을 모은다.
+  void _driveBenchmark() {
+    _ticks++;
+    final t = _bench.value * 2 * math.pi;
+    final scale = 2.6 + 1.8 * math.sin(t);
+    final dx = 120 * math.cos(t);
+    final dy = 160 * math.sin(t * 0.7);
+    _tc.value = Matrix4.identity()
+      ..translateByDouble(dx, dy, 0, 1)
+      ..scaleByDouble(scale, scale, 1, 1);
+  }
+
+  /// [local] 은 지도 위젯 기준 좌표, [renderWidth] 는 그 위젯의 실제 폭.
+  /// 페인터가 `size.width / data.size.width` 로 축소해 그리므로 그 역수를 곱한다.
+  void _onTapMap(Offset local, MapData d, double renderWidth) {
+    final tester = _hitTester;
+    if (tester == null) return;
+    final k = d.size.width / renderWidth;
+    final mapPoint = Offset(local.dx * k, local.dy * k);
+
+    // 허용 오차는 화면 픽셀 기준이다. 손가락 굵기는 배율과 무관하므로
+    // 확대할수록 지도 좌표계에서의 허용 거리는 줄어들어야 한다.
+    final tol = tapToleranceInMapUnits(
+      mapUnitsPerWidgetPx: k,
+      viewerScale: _tc.value.getMaxScaleOnAxis(),
+    );
+
+    final sw = Stopwatch()..start();
+    final hit = tester.nearest(mapPoint, tolerance: tol);
+    sw.stop();
+
+    debugPrint('[HIT] 화면(${local.dx.toStringAsFixed(0)},'
+        '${local.dy.toStringAsFixed(0)}) → '
+        '지도(${mapPoint.dx.toStringAsFixed(1)},${mapPoint.dy.toStringAsFixed(1)}) '
+        '= ${hit == null ? "바다" : "${d.sidoNames[hit.sido]} ${hit.name}(${hit.code})"} '
+        '· 허용 ${tol.toStringAsFixed(1)}km · ${sw.elapsedMicroseconds}us');
+
+    setState(() => _selected = hit);
+    if (hit != null && !_benchmarking) _openRegion(hit, d);
+  }
+
+  /// 지역 탭 → 소개 팝업 → "지역 긁기" → 전용 긁기 화면 → 완료 시 컬러 채움.
+  Future<void> _openRegion(Region r, MapData d) async {
+    final go = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: const Color(0xFF1D1C25),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) => _RegionSheet(
+        region: r,
+        sidoName: d.sidoNames[r.sido],
+        scratched: _scratched.contains(r.code),
+      ),
+    );
+    if (go != true || !mounted) return;
+    final done = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ScratchPage(region: r, sidoName: d.sidoNames[r.sido]),
+      ),
+    );
+    if (done == true && mounted) {
+      setState(() => _scratched = {..._scratched, r.code});
+      debugPrint('[SCRATCH] 지도 반영 ${r.code} · 수집 ${_scratched.length}/256');
+    }
+  }
+
+  void _toggleBenchmark() {
+    setState(() {
+      _benchmarking = !_benchmarking;
+      if (_benchmarking) {
+        _stats.reset();
+        _bench.repeat();
+      } else {
+        _bench.stop();
+        _tc.value = Matrix4.identity();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _bench.dispose();
+    _tc.dispose();
+    _stats.dispose();
+    _cache.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = _data;
+    return Scaffold(
+      backgroundColor: const Color(0xFF141319),
+      body: SafeArea(
+        child: _error != null
+            ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text('지도 데이터를 불러오지 못했습니다.\n$_error',
+                      style: const TextStyle(color: Colors.white70)),
+                ),
+              )
+            : d == null
+                ? const Center(child: CircularProgressIndicator())
+                : Column(
+                    children: [
+                      Expanded(child: _buildMap(d)),
+                      _StatsBar(
+                        stats: _stats,
+                        data: d,
+                        selected: _selected == null
+                            ? null
+                            : '${d.sidoNames[_selected!.sido]} '
+                                '${_selected!.name}',
+                      ),
+                      _Controls(
+                        benchmarking: _benchmarking,
+                        sidoLines: _sidoLines,
+                        onBenchmark: _toggleBenchmark,
+                        onSidoLines: () =>
+                            setState(() => _sidoLines = !_sidoLines),
+                        onReset: () {
+                          _tc.value = Matrix4.identity();
+                          _stats.reset();
+                        },
+                        onZoom3x: () {
+                          _tc.value = Matrix4.identity()
+                            ..scaleByDouble(3, 3, 1, 1);
+                          debugPrint('[HIT] 배율 3배 고정');
+                        },
+                        onFillDemo: () => setState(() {
+                          _scratched = _scratched.isEmpty
+                              ? d.regions.take(60).map((r) => r.code).toSet()
+                              : const <String>{};
+                        }),
+                      ),
+                    ],
+                  ),
+      ),
+    );
+  }
+
+  Widget _buildMap(MapData d) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        final aspect = d.size.height / d.size.width;
+        var w = c.maxWidth;
+        if (w * aspect > c.maxHeight) w = c.maxHeight / aspect;
+        Widget map = CustomPaint(
+          painter: KoreaMapPainter(
+            data: d,
+            scratched: _scratched,
+            showSidoLines: _sidoLines,
+            seaColor: const Color(0xFF16303D),
+            foilColor: const Color(0xFF474553),
+            mode: _mode,
+            cache: _cache,
+            selected: _selected,
+          ),
+          isComplex: true,
+        );
+        if (_mode == RenderMode.pictureBoundary) {
+          map = RepaintBoundary(child: map);
+        }
+        // GestureDetector 를 InteractiveViewer 안쪽에 두면 확대·이동 변환의
+        // 역변환을 Flutter 가 알아서 해준다. localPosition 은 항상 지도
+        // 위젯 기준 좌표로 들어온다.
+        map = GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapDown: (e) => _onTapMap(e.localPosition, d, w),
+          child: map,
+        );
+        return Center(
+          child: InteractiveViewer(
+            transformationController: _tc,
+            minScale: 0.7,
+            maxScale: 16,
+            boundaryMargin: const EdgeInsets.all(400),
+            child: SizedBox(width: w, height: w * aspect, child: map),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// 지역 소개 팝업. 소개 글은 아직 준비 전이라 자리만 잡아둔다 —
+/// 실제 문구와 랜드마크는 T6 아트 전략에서 채운다.
+class _RegionSheet extends StatelessWidget {
+  const _RegionSheet({
+    required this.region,
+    required this.sidoName,
+    required this.scratched,
+  });
+
+  final Region region;
+  final String sidoName;
+  final bool scratched;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = kSidoColors[region.sido];
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    region.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Text(sidoName,
+                    style: const TextStyle(color: Colors.white54, fontSize: 13)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              scratched
+                  ? '이미 수집한 지역이에요. 지도에서 색으로 채워져 있습니다.'
+                  : '$sidoName ${region.name}의 소개와 랜드마크는 준비 중이에요. '
+                      '복권처럼 긁어서 이 지역을 수집해 보세요.',
+              style: const TextStyle(
+                  color: Colors.white70, fontSize: 14, height: 1.5),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: scratched
+                  ? OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text('닫기'),
+                    )
+                  : FilledButton(
+                      style: FilledButton.styleFrom(backgroundColor: color),
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text('지역 긁기'),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatsBar extends StatelessWidget {
+  const _StatsBar({required this.stats, required this.data, this.selected});
+
+  final FrameStats stats;
+  final MapData data;
+  final String? selected;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: stats,
+      builder: (context, _) {
+        final ok = stats.jankRatio < 0.05;
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          color: const Color(0xFF1D1C25),
+          child: DefaultTextStyle(
+            style: const TextStyle(
+                fontSize: 12, color: Colors.white70, fontFamily: 'monospace'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('${stats.estimatedFps.toStringAsFixed(0)} fps',
+                        style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: ok
+                                ? const Color(0xFF69DB7C)
+                                : const Color(0xFFFF8787))),
+                    const SizedBox(width: 12),
+                    Text('예산 초과 ${(stats.jankRatio * 100).toStringAsFixed(0)}%'
+                        ' · ${stats.frames}프레임'),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text('빌드 ${stats.avgBuildMs.toStringAsFixed(1)}ms  '
+                    '래스터 ${stats.avgRasterMs.toStringAsFixed(1)}ms  '
+                    '최악 ${stats.worstTotalMs.toStringAsFixed(1)}ms'),
+                Text('지역 ${data.regions.length}개 · 정점 ${data.vertexCount}개 · '
+                    '로딩 ${data.loadMs}ms'),
+                Text(selected == null
+                    ? '지도를 탭하면 지역이 판정됩니다'
+                    : '선택: $selected'),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Controls extends StatelessWidget {
+  const _Controls({
+    required this.benchmarking,
+    required this.sidoLines,
+    required this.onBenchmark,
+    required this.onSidoLines,
+    required this.onReset,
+    required this.onFillDemo,
+    required this.onZoom3x,
+  });
+
+  final bool benchmarking;
+  final bool sidoLines;
+  final VoidCallback onBenchmark, onSidoLines, onReset, onFillDemo, onZoom3x;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFF1D1C25),
+      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          FilledButton(
+            onPressed: onBenchmark,
+            child: Text(benchmarking ? '벤치마크 중지' : '벤치마크 시작'),
+          ),
+          OutlinedButton(
+            onPressed: onSidoLines,
+            child: Text(sidoLines ? '시도선 끄기' : '시도선 켜기'),
+          ),
+          OutlinedButton(onPressed: onFillDemo, child: const Text('60칸 채우기')),
+          // adb 로는 핀치 줌을 넣을 수 없어, 확대 상태의 좌표 변환을 검증하려면
+          // 배율을 코드로 고정하는 수단이 필요하다.
+          OutlinedButton(onPressed: onZoom3x, child: const Text('3배 확대')),
+          OutlinedButton(onPressed: onReset, child: const Text('초기화')),
+        ],
+      ),
+    );
+  }
+}
