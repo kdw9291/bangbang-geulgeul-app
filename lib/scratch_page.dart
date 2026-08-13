@@ -270,6 +270,7 @@ class _ScratchPageState extends State<ScratchPage>
                           art: artForRegion(widget.region.code),
                           artTarget: _artTarget,
                           artClip: _artClip,
+                          artVariant: artVariantFor(widget.region.code),
                           artCache: _artCache,
                         ),
                       ),
@@ -339,6 +340,7 @@ class _ScratchPainter extends CustomPainter {
     required this.art,
     required this.artTarget,
     required this.artClip,
+    required this.artVariant,
     required this.artCache,
   });
 
@@ -356,6 +358,9 @@ class _ScratchPainter extends CustomPainter {
 
   /// 다도해에서 아트를 가둘 섬 하나. `null` 이면 지역 전체로 가둔다.
   final Path? artClip;
+
+  /// 같은 카테고리가 반복될 때 그림을 흩뜨리는 변형.
+  final ArtVariant artVariant;
   final RegionArtCache artCache;
 
   @override
@@ -372,7 +377,7 @@ class _ScratchPainter extends CustomPainter {
     if (art case final a? when artTarget != null) {
       canvas.save();
       canvas.clipPath(artClip ?? path);
-      canvas.drawPicture(artCache.obtain(a, artTarget!));
+      canvas.drawPicture(artCache.obtain(a, artTarget!, variant: artVariant));
       canvas.restore();
     }
 

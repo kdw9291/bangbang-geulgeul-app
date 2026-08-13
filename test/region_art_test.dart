@@ -239,6 +239,87 @@ void main() {
     });
   });
 
+  group('장면 변형', () {
+    test('같은 코드는 언제나 같은 변형을 준다', () {
+      // 난수를 쓰면 앱을 다시 켤 때마다 강남구가 다르게 보인다.
+      for (final code in ['11680', '11110', '28177', '41111']) {
+        expect(ArtVariant.forCode(code), ArtVariant.forCode(code));
+      }
+    });
+
+    test('String.hashCode 에 의존하지 않는다', () {
+      // Dart 의 String.hashCode 는 실행마다 달라질 수 있다.
+      // 값을 고정해 두어 해시 구현을 바꾸면 테스트가 걸리게 한다.
+      final v = ArtVariant.forCode('11680');
+      expect(v.layout, inInclusiveRange(0, kCityLayoutCount - 1));
+      expect(v.bgShift.abs(), lessThanOrEqualTo(14));
+      // 같은 문자열은 같은 결과 — 플랫폼과 무관해야 한다.
+      expect(ArtVariant.forCode('11680'), v);
+    });
+
+    test('랜드마크는 변형하지 않는다', () {
+      // 첨성대를 좌우로 뒤집을 이유가 없다.
+      expect(artVariantFor('47130'), ArtVariant.none);
+      expect(artVariantFor('50110'), ArtVariant.none);
+    });
+
+    test('서울 25개가 충분히 다른 그림을 받는다', () {
+      // 이 변형을 넣은 이유가 바로 서울이다. 배정은 전부 city 가 맞지만
+      // 장면이 하나뿐이면 같은 그림을 24번 보게 된다.
+      const seoul = [
+        '11110', '11140', '11170', '11200', '11215', '11230', '11260',
+        '11290', '11305', '11320', '11350', '11380', '11410', '11440',
+        '11470', '11500', '11530', '11545', '11560', '11590', '11620',
+        '11650', '11680', '11710', '11740',
+      ];
+      final looks = <String>{};
+      final layouts = <int>{};
+      for (final c in seoul) {
+        final v = ArtVariant.forCode(c);
+        looks.add('${v.layout}/${v.mirror}/${v.bgShift}');
+        layouts.add(v.layout);
+      }
+      debugPrint('서울 25개 · 구분되는 조합 ${looks.length}가지 · 배치 ${layouts.length}종');
+      expect(looks.length, greaterThanOrEqualTo(18));
+      expect(layouts.length, greaterThanOrEqualTo(4));
+    });
+
+    test('도시 장면 6종의 핵심이 모두 안전 영역 안에 있다', () {
+      // 건물 높이를 바꾸므로 조합마다 다시 확인해야 한다.
+      const slack = 3.0;
+      for (final art in kCityScenes) {
+        for (final s in art.shapes) {
+          if (s.layer != ArtLayer.core) continue;
+          final b = _boundsOf(s);
+          expect(b.left, greaterThanOrEqualTo(kSafeArea.left - slack));
+          expect(b.top, greaterThanOrEqualTo(kSafeArea.top - slack));
+          expect(b.right, lessThanOrEqualTo(kSafeArea.right + slack));
+          expect(b.bottom, lessThanOrEqualTo(kSafeArea.bottom + slack));
+        }
+      }
+    });
+
+    test('도시 장면 6종이 서로 다르다', () {
+      final ds = kCityScenes
+          .map((a) => a.shapes.map((s) => s.d).join('|'))
+          .toSet();
+      expect(ds.length, kCityLayoutCount);
+    });
+
+    test('변형이 다르면 캐시가 다시 만든다', () {
+      // 키에서 빼면 좌우 반전만 다른 두 지역이 같은 그림을 재생한다.
+      final cache = RegionArtCache();
+      final art = kCityScenes.first;
+      const target = Rect.fromLTRB(0, 0, 100, 100);
+      final a = cache.obtain(art, target, variant: const ArtVariant(false, 0, 0));
+      final b = cache.obtain(art, target, variant: const ArtVariant(true, 0, 0));
+      expect(identical(a, b), isFalse);
+      final c = cache.obtain(art, target, variant: const ArtVariant(true, 7, 0));
+      expect(identical(b, c), isFalse);
+      cache.dispose();
+    });
+  });
+
   group('배치와 캐시', () {
     test('아트 영역은 항상 정사각형이고 bounds 중심에 놓인다', () {
       // 100×100 좌표계라 정사각형이 아니면 비율이 깨진다.

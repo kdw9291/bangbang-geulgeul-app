@@ -87,4 +87,59 @@ void main() {
 
     expect(out.existsSync(), isTrue);
   });
+
+  test('서울 25개 도시 장면을 나란히 그린다', () async {
+    // 변형이 실제로 눈에 띄는지 본다. 수치로는 21가지지만
+    // 사람 눈에 다르게 보이는지는 봐야 안다.
+    const seoul = [
+      '11110', '11140', '11170', '11200', '11215', '11230', '11260',
+      '11290', '11305', '11320', '11350', '11380', '11410', '11440',
+      '11470', '11500', '11530', '11545', '11560', '11590', '11620',
+      '11650', '11680', '11710', '11740',
+    ];
+
+    const cell = 200.0;
+    const cols = 5;
+    const label = 26.0;
+    final rows = (seoul.length / cols).ceil();
+    final w = cell * cols;
+    final h = (cell + label) * rows;
+
+    final rec = ui.PictureRecorder();
+    final canvas = Canvas(rec);
+    canvas.drawRect(
+        Rect.fromLTWH(0, 0, w, h), Paint()..color = const Color(0xFF15141B));
+
+    for (var i = 0; i < seoul.length; i++) {
+      final code = seoul[i];
+      final ox = (i % cols) * cell;
+      final oy = (i ~/ cols) * (cell + label);
+      final art = artForRegion(code)!;
+      final v = artVariantFor(code);
+
+      final box = Rect.fromLTWH(ox + 6, oy + 6, cell - 12, cell - 12);
+      canvas.drawRect(box, Paint()..color = const Color(0xFF4E8ED9));
+      canvas.save();
+      canvas.clipRect(box);
+      paintRegionArt(canvas, art, box, variant: v);
+      canvas.restore();
+
+      final tp = TextPainter(
+        text: TextSpan(
+          text: '$code  L${v.layout}${v.mirror ? " M" : ""} '
+              '${v.bgShift.toStringAsFixed(0)}',
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(ox + (cell - tp.width) / 2, oy + cell + 4));
+    }
+
+    final img = await rec.endRecording().toImage(w.toInt(), h.toInt());
+    final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+    final out = File('build/city_variants.png');
+    out.writeAsBytesSync(bytes!.buffer.asUint8List());
+    debugPrint('[CAT] 저장 ${out.path}');
+    expect(out.existsSync(), isTrue);
+  });
 }

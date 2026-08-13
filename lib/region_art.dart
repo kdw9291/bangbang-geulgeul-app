@@ -420,11 +420,17 @@ void paintRegionArt(
   RegionArt art,
   Rect target, {
   double opacity = 1.0,
+  ArtVariant variant = ArtVariant.none,
 }) {
   if (opacity <= 0) return;
   canvas.save();
   canvas.translate(target.left, target.top);
   canvas.scale(target.width / 100, target.height / 100);
+  if (variant.mirror) {
+    // 100×100 좌표계 한가운데를 축으로 뒤집는다.
+    canvas.translate(100, 0);
+    canvas.scale(-1, 1);
+  }
 
   for (final s in art.shapes) {
     Path p;
@@ -433,6 +439,10 @@ void paintRegionArt(
         ..addOval(Rect.fromCircle(center: Offset(c.$1, c.$2), radius: c.$3));
     } else {
       p = parseSvgPath(s.d);
+    }
+    // 배경만 옆으로 민다. 핵심 모티프를 밀면 안전 영역을 벗어난다.
+    if (s.layer == ArtLayer.background && variant.bgShift != 0) {
+      p = p.shift(Offset(variant.bgShift, 0));
     }
 
     if (s.fill case final f?) {
@@ -462,17 +472,23 @@ class RegionArtCache {
   ui.Picture? _picture;
   RegionArt? _art;
   Rect? _target;
+  ArtVariant? _variant;
 
-  ui.Picture obtain(RegionArt art, Rect target) {
+  ui.Picture obtain(RegionArt art, Rect target,
+      {ArtVariant variant = ArtVariant.none}) {
+    // **변형도 키에 넣어야 한다.** 빼면 좌우 반전만 다른 두 지역이
+    // 같은 그림을 재생한다.
     if (_picture == null ||
         !identical(_art, art) ||
-        _target != target) {
+        _target != target ||
+        _variant != variant) {
       _picture?.dispose();
       final recorder = ui.PictureRecorder();
-      paintRegionArt(Canvas(recorder), art, target);
+      paintRegionArt(Canvas(recorder), art, target, variant: variant);
       _picture = recorder.endRecording();
       _art = art;
       _target = target;
+      _variant = variant;
     }
     return _picture!;
   }
@@ -482,6 +498,7 @@ class RegionArtCache {
     _picture = null;
     _art = null;
     _target = null;
+    _variant = null;
   }
 }
 
@@ -492,6 +509,9 @@ class RegionArtCache {
 const _p = ArtPalette.paper;
 const _a = ArtPalette.accent;
 const _a2 = ArtPalette.accent2;
+
+/// 도시 기본형. `kCityScenes[0]` 과 같다 — 아래 맵이 초기화될 때 이미 만들어져 있다.
+final RegionArt _cityBase = _buildCityScene(0);
 
 final Map<ArtCategory, RegionArt> kCategoryArt = {
   // 겹겹이 늘어선 먼 능선(배경) 앞에 앞산 두 봉우리(핵심).
@@ -539,17 +559,9 @@ final Map<ArtCategory, RegionArt> kCategoryArt = {
   ]),
 
   // 뒤쪽 스카이라인(배경) 앞에 건물 세 동(핵심).
-  ArtCategory.city: const RegionArt('도시', [
-    ArtShape(
-        'M-25 70 L-25 54 L-13 54 L-13 44 L-1 44 L-1 60 L11 60 L11 48 L23 48 '
-        'L23 64 L35 64 L35 52 L47 52 L47 42 L59 42 L59 58 L71 58 L71 46 '
-        'L83 46 L83 62 L95 62 L95 50 L107 50 L107 66 L125 66 L125 70 Z',
-        fill: _a2, stroke: null, layer: ArtLayer.background),
-    ArtShape('M-25 70 H125', layer: ArtLayer.background),
-    ArtShape('M36 70 V46 h10 v24 Z M48 70 V36 h10 v34 Z M60 70 V52 h10 v18 Z',
-        fill: _p),
-    ArtShape('M51 44 h4 M51 52 h4 M51 60 h4', stroke: _a, strokeWidth: 3),
-  ]),
+  // 도시는 반복이 가장 심해 **장면을 6종으로 만들어 지역 코드로 고른다**
+  // (`kCityScenes`). 여기 있는 것은 그중 첫 번째와 같은 기본형이다.
+  ArtCategory.city: _cityBase,
 
   // 기와담이 좌우로 이어지고(배경) 가운데 한옥 한 채(핵심).
   ArtCategory.heritage: const RegionArt('유적·한옥', [
@@ -779,6 +791,113 @@ final Map<String, RegionArt> kLandmarkArt = {
   ]),
 };
 
+// ---------------------------------------------------------------------------
+// 장면 변형
+// ---------------------------------------------------------------------------
+
+/// 같은 카테고리가 반복될 때 그림을 흩뜨리는 변형.
+///
+/// 서울 25개는 전부 `city` 다. 배정은 맞지만 장면이 하나뿐이면 **같은 그림을
+/// 24번 보게 된다.** 카테고리를 억지로 흩뜨리면 배정이 틀려지므로,
+/// 카테고리는 그대로 두고 **장면 쪽에 변화를 준다** (2026-08-13 사용자 결정).
+///
+/// **난수를 쓰지 않는다.** 지역 코드에서 결정론적으로 뽑으므로 같은 지역은
+/// 언제나 같은 그림이다. 앱을 다시 켰다고 서울 강남이 다른 모습이면 안 된다.
+@immutable
+class ArtVariant {
+  const ArtVariant(this.mirror, this.bgShift, this.layout);
+
+  /// 변형 없음. 랜드마크는 지역마다 그림이 달라 변형이 필요 없다.
+  static const none = ArtVariant(false, 0, 0);
+
+  /// 좌우 반전.
+  final bool mirror;
+
+  /// 배경만 좌우로 미는 양. 핵심 모티프는 움직이지 않는다 —
+  /// 안전 영역을 벗어나면 잘렸을 때 알아볼 수 없게 되기 때문이다.
+  final double bgShift;
+
+  /// 카테고리별 배치 번호. 도시는 건물 높이 조합을 고른다.
+  final int layout;
+
+  /// 지역 코드에서 뽑는다.
+  ///
+  /// `String.hashCode` 는 실행마다 달라질 수 있어 쓰지 않는다.
+  /// FNV-1a 로 직접 계산해 빌드·기기와 무관하게 같은 값이 나오게 한다.
+  factory ArtVariant.forCode(String code, {int layouts = kCityLayoutCount}) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < code.length; i++) {
+      h = ((h ^ code.codeUnitAt(i)) * 0x01000193) & 0xFFFFFFFF;
+    }
+    return ArtVariant(
+      (h & 1) == 1,
+      ((h >> 1) % 5 - 2) * 7.0, // -14, -7, 0, 7, 14
+      (h >> 4) % layouts,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is ArtVariant &&
+      other.mirror == mirror &&
+      other.bgShift == bgShift &&
+      other.layout == layout;
+
+  @override
+  int get hashCode => Object.hash(mirror, bgShift, layout);
+
+  @override
+  String toString() => 'ArtVariant($mirror, $bgShift, $layout)';
+}
+
+/// 도시 장면의 건물 높이 조합. 세 동의 지붕 y 좌표다 (작을수록 높다).
+///
+/// 모두 안전 영역(27~73) 안이라 어떤 크롭에서도 살아남는다.
+const _cityTops = [
+  [46.0, 36.0, 52.0],
+  [40.0, 52.0, 44.0],
+  [52.0, 42.0, 48.0],
+  [44.0, 34.0, 50.0],
+  [38.0, 48.0, 40.0],
+  [50.0, 40.0, 46.0],
+];
+
+const kCityLayoutCount = 6;
+
+RegionArt _buildCityScene(int layout) {
+  final t = _cityTops[layout];
+  String bar(double x, double top) =>
+      'M$x 70 V$top h10 v${(70 - top).toStringAsFixed(0)} Z';
+  // 가운데 동에 창을 세 줄 넣는다. 지붕이 낮으면 줄 수를 줄여 밖으로 안 나가게 한다.
+  final wy = <double>[];
+  for (var y = t[1] + 8; y < 68; y += 8) {
+    wy.add(y);
+  }
+  return RegionArt('도시', [
+    const ArtShape(
+        'M-25 70 L-25 54 L-13 54 L-13 44 L-1 44 L-1 60 L11 60 L11 48 L23 48 '
+        'L23 64 L35 64 L35 52 L47 52 L47 42 L59 42 L59 58 L71 58 L71 46 '
+        'L83 46 L83 62 L95 62 L95 50 L107 50 L107 66 L125 66 L125 70 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    const ArtShape('M-25 70 H125', layer: ArtLayer.background),
+    // 지면선 아래가 비어 보여 도로를 깐다. 중앙선 점선이 반복이라
+    // 좌우가 잘려도 길로 읽힌다.
+    const ArtShape('M-25 88 H125', stroke: _a2, layer: ArtLayer.background),
+    const ArtShape(
+        'M-16 88 h10 M4 88 h10 M24 88 h10 M44 88 h10 M64 88 h10 '
+        'M84 88 h10 M104 88 h10',
+        stroke: _a, strokeWidth: 3, layer: ArtLayer.background),
+    ArtShape('${bar(36, t[0])} ${bar(48, t[1])} ${bar(60, t[2])}', fill: _p),
+    ArtShape(wy.map((y) => 'M51 $y h4').join(' '),
+        stroke: _a, strokeWidth: 3),
+  ]);
+}
+
+/// 도시 장면 6종. 좌우 반전(×2)·배경 이동(×5)과 조합하면 60가지가 나온다.
+/// 서울 25개를 서로 다르게 보여주기에 충분하다.
+final List<RegionArt> kCityScenes =
+    List.generate(kCityLayoutCount, _buildCityScene);
+
 /// 지역 코드에 해당하는 아트를 고른다.
 ///
 /// **상호 배타적 폴백 등급이다** — 랜드마크가 있으면 랜드마크, 없으면 카테고리,
@@ -787,5 +906,21 @@ final Map<String, RegionArt> kLandmarkArt = {
 /// 카테고리 배정 256개는 `region_category.g.dart` 에 있고
 /// `design/tools/make_category_map.py` 가 만든다. 배정 근거는
 /// `design/category-assignment.md` 참고.
-RegionArt? artForRegion(String code) =>
-    kLandmarkArt[code] ?? kCategoryArt[kRegionCategory[code]];
+RegionArt? artForRegion(String code) {
+  final landmark = kLandmarkArt[code];
+  if (landmark != null) return landmark;
+  final cat = kRegionCategory[code];
+  if (cat == null) return null;
+  // 도시는 반복이 가장 심해 장면 자체를 코드에 따라 고른다.
+  if (cat == ArtCategory.city) {
+    return kCityScenes[ArtVariant.forCode(code).layout];
+  }
+  return kCategoryArt[cat];
+}
+
+/// 이 지역 아트에 적용할 변형.
+///
+/// 랜드마크는 지역마다 그림이 다르므로 변형하지 않는다 — 첨성대를 좌우로
+/// 뒤집을 이유가 없다.
+ArtVariant artVariantFor(String code) =>
+    kLandmarkArt.containsKey(code) ? ArtVariant.none : ArtVariant.forCode(code);
