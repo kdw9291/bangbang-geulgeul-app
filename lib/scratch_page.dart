@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'frame_stats.dart';
 import 'map_data.dart';
+import 'region_art.dart';
 import 'scratch_progress.dart';
 
 /// 지역 하나를 복권처럼 긁는 전용 화면.
@@ -42,12 +43,14 @@ class _ScratchPageState extends State<ScratchPage>
   late final AnimationController _fade;
 
   Path? _path; // 화면 좌표로 변환된 지역 Path
+  Rect? _artTarget; // 아트를 놓을 자리 (준비 단계에서 한 번 계산)
   ScratchProgress? _progress;
   Size? _preparedFor; // 어떤 화면 크기로 준비했는지
   bool _preparing = false;
   bool _done = false;
 
   final _stats = FrameStats();
+  final _artCache = RegionArtCache();
   int _panEvents = 0;
   int _panMicros = 0;
 
@@ -69,6 +72,7 @@ class _ScratchPageState extends State<ScratchPage>
   void dispose() {
     _fade.dispose();
     _stats.dispose();
+    _artCache.dispose();
     super.dispose();
   }
 
@@ -105,6 +109,24 @@ class _ScratchPageState extends State<ScratchPage>
     final path = widget.region.path.transform(m.storage);
     final progress =
         ScratchProgress.forRegion(widget.region, m, brush: brush);
+
+    // 아트 배치도 여기서 정한다. Path.contains 를 여러 번 부르므로
+    // 렌더 중에 하면 매 입력 프레임에 얹힌다.
+    // 배치는 B(`artTargetFill`) 를 쓴다 — 아트를 지역보다 크게 놓고 지역 모양을
+    // 창처럼 써서 비춘다. A(`artTargetRectIn`) 는 지역 안에 맞추려고 줄이는데,
+    // 육지가 가늘거나 흩어진 지역(종로구·옹진군·부산 서구)에서 안 보일 만큼
+    // 작아졌다. 비교 렌더는 `design/art-pilot-placement.png` 참고.
+    Rect? artTarget;
+    if (artForRegion(widget.region.code) != null) {
+      artTarget = artTargetFill(
+        path,
+        largestRingBounds(
+          widget.region.rings,
+          scale: m.storage[0],
+          offset: Offset(m.storage[12], m.storage[13]),
+        ),
+      );
+    }
     sw.stop();
 
     debugPrint('[SCRATCH] 준비 ${widget.region.name} '
@@ -113,6 +135,7 @@ class _ScratchPageState extends State<ScratchPage>
 
     setState(() {
       _path = path;
+      _artTarget = artTarget;
       _progress = progress;
       _preparedFor = size;
       _preparing = false;
@@ -221,6 +244,9 @@ class _ScratchPageState extends State<ScratchPage>
                           baseColor: color,
                           strokes: _strokes,
                           foilOpacity: 1 - _fade.value,
+                          art: artForRegion(widget.region.code),
+                          artTarget: _artTarget,
+                          artCache: _artCache,
                         ),
                       ),
                     ),
@@ -286,6 +312,9 @@ class _ScratchPainter extends CustomPainter {
     required this.baseColor,
     required this.strokes,
     required this.foilOpacity,
+    required this.art,
+    required this.artTarget,
+    required this.artCache,
   });
 
   final Path path;
@@ -293,10 +322,31 @@ class _ScratchPainter extends CustomPainter {
   final List<List<Offset>> strokes;
   final double foilOpacity;
 
+  /// 긁으면 드러나는 아트. 없으면(1층 폴백) 단색만 보인다.
+  final RegionArt? art;
+
+  /// 아트를 놓을 자리. 준비 단계에서 한 번 계산한다 — `Path.contains` 를
+  /// 여러 번 부르므로 매 입력 프레임에 다시 구하면 안 된다.
+  final Rect? artTarget;
+  final RegionArtCache artCache;
+
   @override
   void paint(Canvas canvas, Size size) {
-    // 긁으면 드러나는 밑색 (나중에 랜드마크 일러스트가 들어갈 자리)
+    // 긁으면 드러나는 밑색
     canvas.drawPath(path, Paint()..color = baseColor);
+
+    // 그 위에 랜드마크 또는 카테고리 아트. 지역 모양으로 잘라내지 않으면
+    // bounds 중앙에 놓인 아트가 경계 밖으로 삐져나온다 — 특히 다도해와
+    // 세로로 긴 지역에서 두드러진다.
+    //
+    // 매 입력 프레임마다 이 painter 가 다시 도는데, 아트를 그때마다 파싱하고
+    // 그리면 그 비용이 전부 얹힌다. Picture 로 기록해두고 재생만 한다.
+    if (art case final a? when artTarget != null) {
+      canvas.save();
+      canvas.clipPath(path);
+      canvas.drawPicture(artCache.obtain(a, artTarget!));
+      canvas.restore();
+    }
 
     if (foilOpacity > 0) {
       // BlendMode.clear 는 레이어 안에서 써야 은박만 뚫린다.
