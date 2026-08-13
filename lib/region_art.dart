@@ -495,46 +495,111 @@ const _a = ArtPalette.accent;
 const _a2 = ArtPalette.accent2;
 
 final Map<ArtCategory, RegionArt> kCategoryArt = {
+  // 겹겹이 늘어선 먼 능선(배경) 앞에 앞산 두 봉우리(핵심).
   ArtCategory.mountain: const RegionArt('산', [
-    ArtShape('M10 80 L38 34 L52 56 L64 38 L90 80 Z', fill: _p),
-    ArtShape('M30 47 L38 34 L45 45', stroke: _a2),
+    ArtShape(
+        'M-25 52 L-8 32 L8 50 L24 30 L42 52 L58 30 L76 52 L92 32 L110 50 '
+        'L125 36 L125 62 L-25 62 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M27 70 L41 38 L55 70 Z M49 70 L60 46 L71 70 Z', fill: _p),
+    ArtShape('M35 55 L41 38 L47 54', stroke: _a2),
   ]),
+
+  // 물결과 해(배경) 앞에 조개 하나(핵심).
+  // 파도만 그리면 '강·호수' 와 구분되지 않아 해변의 표지를 핵심에 둔다.
   ArtCategory.sea: const RegionArt('바다·해변', [
-    ArtShape.circle(68, 28, 12, fill: _a),
-    ArtShape('M10 62 C24 54 36 70 50 62 C64 54 76 70 90 62', stroke: _a2),
-    ArtShape('M10 80 C24 72 36 88 50 80 C64 72 76 88 90 80', stroke: _a2),
+    ArtShape.circle(92, 22, 11,
+        fill: _a, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-25 66 H125',
+        stroke: _a2, strokeWidth: 3, layer: ArtLayer.background),
+    ArtShape('M-25 78 C-5 72 10 84 30 78 C50 72 65 84 85 78 C100 74 112 80 125 76',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 90 C-5 84 10 96 30 90 C50 84 65 96 85 90 C100 86 112 92 125 88',
+        stroke: _a2, layer: ArtLayer.background),
+    // 부챗살은 **아래 힌지에서 방사상으로** 퍼져야 조개로 읽힌다.
+    // 세로줄로 그렸더니 수박처럼 보였다.
+    ArtShape('M50 70 C32 66 26 50 30 40 C38 35 44 34 50 34 '
+        'C56 34 62 35 70 40 C74 50 68 66 50 70 Z', fill: _p),
+    ArtShape('M50 70 L36 42 M50 70 L43 37 M50 70 L50 35 '
+        'M50 70 L57 37 M50 70 L64 42',
+        stroke: _a2, strokeWidth: 3),
   ]),
+
+  // 물결과 먼 섬(배경) 가운데 소나무 얹은 섬(핵심).
   ArtCategory.island: const RegionArt('섬', [
-    ArtShape('M26 66 C30 44 44 32 56 32 C68 32 78 46 78 66 Z', fill: _p),
-    ArtShape('M56 32 V16', stroke: _a2),
-    ArtShape('M56 18 L74 24 L56 30 Z', fill: _a),
-    ArtShape('M10 80 C26 72 38 88 54 80 C70 72 78 86 90 80', stroke: _a2),
+    ArtShape('M-22 60 L-12 48 L-2 60 Z M104 62 L114 46 L124 62 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-25 78 C-5 72 10 84 30 78 C50 72 65 84 85 78 C100 74 112 80 125 76',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 90 C-5 84 10 96 30 90 C50 84 65 96 85 90 C100 86 112 92 125 88',
+        stroke: _a2, layer: ArtLayer.background),
+    // 섬을 낮추고 소나무를 크게 잡는다. 나무가 작으면 봉분처럼 보인다.
+    ArtShape('M28 70 C32 56 40 48 50 48 C60 48 68 56 72 70 Z', fill: _p),
+    ArtShape('M50 48 V40'),
+    ArtShape('M41 40 L50 27 L59 40 Z', fill: _a2),
   ]),
+
+  // 뒤쪽 스카이라인(배경) 앞에 건물 세 동(핵심).
   ArtCategory.city: const RegionArt('도시', [
-    ArtShape('M18 46 h24 v38 h-24 Z', fill: _p),
-    ArtShape('M46 24 h22 v60 h-22 Z', fill: _p),
-    ArtShape('M72 56 h16 v28 h-16 Z', fill: _p),
-    ArtShape('M52 40 h10 M52 54 h10 M52 68 h10', stroke: _a),
-    ArtShape('M12 84 h76'),
-  ]),
-  ArtCategory.heritage: const RegionArt('유적·한옥', [
-    ArtShape('M22 84 V56 h56 v28', fill: _p),
-    ArtShape('M14 56 L50 40 L86 56 Z', fill: _p, stroke: _a2),
-    ArtShape('M44 84 V66 h12 v18', fill: _a),
-    ArtShape('M12 84 h76'),
-  ]),
-  ArtCategory.hotspring: const RegionArt('온천', [
-    ArtShape('M18 60 h64 v10 C82 80 74 88 64 88 H36 C26 88 18 80 18 70 Z',
+    ArtShape(
+        'M-25 70 L-25 54 L-13 54 L-13 44 L-1 44 L-1 60 L11 60 L11 48 L23 48 '
+        'L23 64 L35 64 L35 52 L47 52 L47 42 L59 42 L59 58 L71 58 L71 46 '
+        'L83 46 L83 62 L95 62 L95 50 L107 50 L107 66 L125 66 L125 70 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-25 70 H125', layer: ArtLayer.background),
+    ArtShape('M36 70 V46 h10 v24 Z M48 70 V36 h10 v34 Z M60 70 V52 h10 v18 Z',
         fill: _p),
-    ArtShape('M36 44 C30 36 42 30 36 20', stroke: _a),
-    ArtShape('M52 44 C46 36 58 30 52 20', stroke: _a),
-    ArtShape('M68 44 C62 36 74 30 68 20', stroke: _a),
+    ArtShape('M51 44 h4 M51 52 h4 M51 60 h4', stroke: _a, strokeWidth: 3),
   ]),
+
+  // 기와담이 좌우로 이어지고(배경) 가운데 한옥 한 채(핵심).
+  ArtCategory.heritage: const RegionArt('유적·한옥', [
+    ArtShape('M-25 62 H125', stroke: _a2, layer: ArtLayer.background),
+    ArtShape(
+        'M-25 58 C-19 52 -13 52 -7 58 C-1 52 5 52 11 58 C17 52 23 52 29 58 '
+        'C35 52 41 52 47 58 C53 52 59 52 65 58 C71 52 77 52 83 58 '
+        'C89 52 95 52 101 58 C107 52 113 52 119 58 C121 56 123 55 125 55',
+        stroke: _a2, strokeWidth: 3, layer: ArtLayer.background),
+    ArtShape('M-25 76 H125', layer: ArtLayer.background),
+    ArtShape('M30 54 L50 42 L70 54 Z', fill: _p),
+    ArtShape('M28 54 H72'),
+    ArtShape('M36 54 h28 v16 h-28 Z', fill: _p),
+    ArtShape('M45 70 V60 h10 v10', fill: _a),
+    ArtShape('M50 42 V36', stroke: _a2),
+  ]),
+
+  // 바위 능선과 먼 김(배경) 앞에 탕과 김(핵심).
+  ArtCategory.hotspring: const RegionArt('온천', [
+    ArtShape('M-12 30 C-17 24 -7 18 -12 12 M14 26 C9 20 19 14 14 8 '
+        'M86 28 C81 22 91 16 86 10 M112 24 C107 18 117 12 112 6',
+        stroke: _a2, strokeWidth: 3, layer: ArtLayer.background),
+    ArtShape(
+        'M-25 76 C-15 68 -5 68 5 76 C15 68 25 68 35 76 C45 68 55 68 65 76 '
+        'C75 68 85 68 95 76 C105 68 115 68 125 76 L125 86 L-25 86 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M32 52 h36 v8 C68 66 61 72 50 72 C39 72 32 66 32 60 Z', fill: _p),
+    ArtShape('M40 46 C35 40 45 34 40 28', stroke: _a),
+    ArtShape('M50 46 C45 40 55 34 50 28', stroke: _a),
+    ArtShape('M60 46 C55 40 65 34 60 28', stroke: _a),
+  ]),
+
+  // 물줄기와 건너편 능선(배경) 위에 아치 돌다리(핵심).
+  //
+  // 물결만 그리면 '바다' 와 구분되지 않는다. 강·호수의 표지는 **양안이 있다는 것**이고
+  // 다리가 그걸 한눈에 보여준다. 징검다리를 먼저 그렸으나 돌 다섯 개가
+  // 구름처럼 보여 교체했다.
   ArtCategory.river: const RegionArt('강·호수', [
-    ArtShape('M20 20 C32 44 32 60 20 84', stroke: _a2),
-    ArtShape('M80 20 C68 44 68 60 80 84', stroke: _a2),
-    ArtShape('M40 40 C50 46 54 46 62 40', stroke: _a),
-    ArtShape('M38 62 C48 68 52 68 60 62', stroke: _a),
+    ArtShape('M-25 40 C-5 34 10 38 30 32 C50 26 70 36 125 30',
+        stroke: _a2, strokeWidth: 3, layer: ArtLayer.background),
+    ArtShape('M-25 74 C0 68 25 80 50 74 C75 68 100 78 125 72',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 86 C0 80 25 92 50 86 C75 80 100 90 125 84',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M36 58 V70 M64 58 V70'),
+    ArtShape('M36 58 C38 46 62 46 64 58'),
+    ArtShape('M27 58 H73', strokeWidth: 6),
+    ArtShape('M33 58 V52 M44 58 V52 M56 58 V52 M67 58 V52',
+        stroke: _a2, strokeWidth: 3),
   ]),
   // 장면 구성: 논 이랑이 좌우로 반복되고(배경) 가운데 나무 한 그루(핵심).
   // 이랑은 반복 패턴이라 잘려도 "논밭"으로 읽힌다. B 배치에서 원만 남아

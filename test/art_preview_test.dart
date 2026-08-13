@@ -27,14 +27,18 @@ void main() {
 
     // 크롭 비율은 실제 지역에서 가져왔다. 부산 서구는 가로:세로 1:3.73 이라
     // 아트의 가운데 세로 띠만 보인다. 가로로 가장 긴 곳은 부안군 2.56:1 이다.
-    final scenes = <String, RegionArt>{
+    // 랜드마크 6종과 카테고리 8종을 나눠서 본다.
+    // 카테고리는 206개 이상이 재사용하므로 서로 구분되는지가 특히 중요하다.
+    final landmarks = <String, RegionArt>{
       '첨성대': kLandmarkArt['47130']!,
       '팔달문': kLandmarkArt['41115']!,
       '하회마을': kLandmarkArt['47170']!,
       '돌하르방': kLandmarkArt['50110']!,
       '순천만': kLandmarkArt['12150']!,
       '울릉도': kLandmarkArt['47940']!,
-      '들판(카테고리)': kCategoryArt[ArtCategory.field]!,
+    };
+    final categories = {
+      for (final c in ArtCategory.values) c.name: kCategoryArt[c]!,
     };
     const crops = ['원본', '세로 1:3.7', '가로 2.6:1'];
 
@@ -51,12 +55,13 @@ void main() {
       '26140': '부산서구',
     };
 
-    const cell = 260.0;
+    const cell = 240.0;
     const label = 30.0;
     const regionCols = 5;
-    final sceneCols = scenes.length;
+    final sceneCols = math.max(landmarks.length, categories.length);
     final cols = math.max(sceneCols, regionCols);
-    final rows = crops.length + (pilot.length / regionCols).ceil();
+    // 랜드마크 3행(크롭) + 카테고리 3행(크롭) + 지역 2행
+    final rows = crops.length * 2 + (pilot.length / regionCols).ceil();
     final w = cell * cols;
     final h = (cell + label) * rows;
 
@@ -66,11 +71,13 @@ void main() {
         Rect.fromLTWH(0, 0, w, h), Paint()..color = const Color(0xFF15141B));
 
     // ---- 장면 구성: 원본과 극단 크롭 ----
-    var j = 0;
-    for (final crop in crops) {
-      for (final e in scenes.entries) {
-        final ox = (j % sceneCols) * cell;
-        final oy = (j ~/ sceneCols) * (cell + label);
+    var rowBase = 0;
+    for (final group in [landmarks, categories]) {
+      var j = 0;
+      for (final crop in crops) {
+        for (final e in group.entries) {
+        final ox = (j % group.length) * cell;
+        final oy = (rowBase + j ~/ group.length) * (cell + label);
         j++;
 
         const inset = 6.0;
@@ -97,9 +104,11 @@ void main() {
             ..color = Colors.white.withValues(alpha: .35),
         );
 
-        _label(canvas, '$crop  ${scenes.keys.toList().indexOf(e.key) + 1}',
+        _label(canvas, '${group.keys.toList().indexOf(e.key) + 1}  $crop',
             ox, oy + cell, cell);
+        }
       }
+      rowBase += crops.length;
     }
 
     // ---- 파일럿 10개 지역: 채택 배치(B) ----
@@ -107,7 +116,7 @@ void main() {
     for (final entry in pilot.entries) {
       final region = data.regions.firstWhere((r) => r.code == entry.key);
       final ox = (i % regionCols) * cell;
-      final oy = (crops.length + i ~/ regionCols) * (cell + label);
+      final oy = (rowBase + i ~/ regionCols) * (cell + label);
       i++;
 
       // 긁기 화면과 같은 경로를 탄다 — 다도해는 섬을 모아 재배치한다.
