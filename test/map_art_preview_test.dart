@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mapscratch/map_data.dart';
 import 'package:mapscratch/map_painter.dart';
+import 'package:mapscratch/sea_background.dart';
 import 'package:mapscratch/region_art.dart';
 
 /// 지도에 아트를 얹은 모습을 **눈으로 보는 도구.** 검사가 아니다.
@@ -37,8 +38,9 @@ void main() {
       // 전부 수집한 상태로 그린다. 아트는 수집한 지역에만 나온다.
       scratched: data.regions.map((r) => r.scratchUnitId).toSet(),
       showSidoLines: true,
-      seaColor: const Color(0xFF15141B),
-      foilColor: const Color(0xFF3B3944),
+      sea: kSeaAdopted,
+      seaCache: SeaBackgroundCache(),
+      foilColor: kSeaAdopted.foil,
       config: RenderConfig.adopted,
       cache: MapPictureCache(),
     );

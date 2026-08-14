@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mapscratch/map_data.dart';
 import 'package:mapscratch/map_painter.dart';
+import 'package:mapscratch/sea_background.dart';
 
 /// Codex 검토 High #2 회귀 방지.
 ///
@@ -22,11 +23,54 @@ void main() {
         data: data,
         scratched: scratched,
         showSidoLines: true,
-        seaColor: const Color(0xFF16303D),
-        foilColor: const Color(0xFF474553),
+        sea: kSeaAdopted,
+        seaCache: SeaBackgroundCache(),
+        foilColor: kSeaAdopted.foil,
         config: RenderConfig.adopted,
         cache: cache ?? MapPictureCache(),
       );
+
+  test('바다 팔레트가 바뀌면 다시 그린다', () {
+    // 배경은 지도 Picture 캐시 밖이라, 팔레트 변경을 여기서 잡지 못하면
+    // 설정에서 테마를 바꿔도 화면이 그대로다.
+    //
+    // **팔레트만 다르게 두고 나머지 입력은 전부 같게 한다.** 처음에는 서로
+    // 다른 두 채택 팔레트를 썼는데, 이름도 foil 도 달라서 `old.sea` 비교를
+    // 통째로 지워도 `old.foilColor` 가 대신 참이 되어 테스트가 통과했다.
+    // 이름과 foil 을 맞추고 base/blob 만 바꿔야 이 경로가 고립된다.
+    const p1 = SeaPalette(
+      name: 'fixture',
+      base: Color(0xFF102030),
+      foil: Color(0xFF445566),
+      blobs: [SeaBlob(Offset(0.5, 0.5), 0.5, Color(0xFF778899))],
+    );
+    const p2 = SeaPalette(
+      name: 'fixture', // 이름 같음
+      base: Color(0xFFAABBCC), // base 와 blob 만 다르다
+      foil: Color(0xFF445566), // foil 같음
+      blobs: [SeaBlob(Offset(0.2, 0.2), 0.3, Color(0xFF334455))],
+    );
+
+    final base = <String>{};
+    final cache = MapPictureCache();
+    final seaCache = SeaBackgroundCache();
+
+    KoreaMapPainter make(SeaPalette sea) => KoreaMapPainter(
+          data: data,
+          scratched: base,
+          showSidoLines: true,
+          sea: sea,
+          seaCache: seaCache,
+          foilColor: p1.foil,
+          config: RenderConfig.adopted,
+          cache: cache,
+        );
+
+    expect(make(p2).shouldRepaint(make(p1)), isTrue,
+        reason: '팔레트 내용이 다르면 다시 그려야 한다');
+    expect(make(p1).shouldRepaint(make(p1)), isFalse,
+        reason: '같은 팔레트면 다시 그릴 이유가 없다');
+  });
 
   test('긁은 지역이 늘면 다시 그린다', () {
     final a = painter(const <String>{});
@@ -54,8 +98,9 @@ void main() {
       data: data,
       scratched: base,
       showSidoLines: true,
-      seaColor: const Color(0xFF16303D),
-      foilColor: const Color(0xFF474553),
+      sea: kSeaAdopted,
+      seaCache: SeaBackgroundCache(),
+      foilColor: kSeaAdopted.foil,
       config: RenderConfig.adopted,
       cache: MapPictureCache(),
       selected: data.regions.first,
@@ -77,8 +122,9 @@ void main() {
       data: data,
       scratched: base,
       showSidoLines: true,
-      seaColor: const Color(0xFF16303D),
-      foilColor: const Color(0xFF474553),
+      sea: kSeaAdopted,
+      seaCache: SeaBackgroundCache(),
+      foilColor: kSeaAdopted.foil,
       config: const RenderConfig(RenderMode.picture, strokes: false),
       cache: MapPictureCache(),
     );

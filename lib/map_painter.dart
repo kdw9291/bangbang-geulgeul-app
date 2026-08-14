@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'map_data.dart';
 import 'region_art.dart';
+import 'sea_background.dart';
 
 /// 렌더 방식 — **어떻게 그리는가**만 나타낸다.
 ///
@@ -180,7 +181,8 @@ class KoreaMapPainter extends CustomPainter {
     required this.data,
     required this.scratched,
     required this.showSidoLines,
-    required this.seaColor,
+    required this.sea,
+    required this.seaCache,
     required this.foilColor,
     required this.config,
     required this.cache,
@@ -190,7 +192,14 @@ class KoreaMapPainter extends CustomPainter {
   final MapData data;
   final Set<String> scratched;
   final bool showSidoLines;
-  final Color seaColor;
+
+  /// 바다 배경 팔레트. 단색이 아니라 blob 그라데이션이다.
+  final SeaPalette sea;
+
+  /// 배경 Picture 캐시. 배경은 지도 캐시 밖이라 매 프레임 그려지므로,
+  /// 셰이더를 프레임마다 만들지 않도록 크기별로 기록해 둔다.
+  final SeaBackgroundCache seaCache;
+
   final Color foilColor;
   final RenderConfig config;
   final MapPictureCache cache;
@@ -201,7 +210,7 @@ class KoreaMapPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    canvas.drawRect(Offset.zero & size, Paint()..color = seaColor);
+    canvas.drawPicture(seaCache.obtain(size, sea));
     canvas.save();
     canvas.scale(size.width / data.size.width);
 
@@ -233,7 +242,7 @@ class KoreaMapPainter extends CustomPainter {
       !identical(old.data, data) ||
       old.config != config ||
       old.showSidoLines != showSidoLines ||
-      old.seaColor != seaColor ||
+      old.sea != sea ||
       old.foilColor != foilColor ||
       old.selected?.scratchUnitId != selected?.scratchUnitId ||
       // 내용으로 비교해야 한다. 길이 비교는 두 가지로 실패한다 —

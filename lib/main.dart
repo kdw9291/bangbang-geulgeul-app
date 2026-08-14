@@ -10,6 +10,7 @@ import 'map_data.dart';
 import 'map_painter.dart';
 import 'region_art.dart';
 import 'scratch_page.dart';
+import 'sea_background.dart';
 
 void main() => runApp(const MapScratchApp());
 
@@ -61,6 +62,11 @@ class _MapSpikePageState extends State<MapSpikePage>
   /// `shouldRepaint` 가 변경을 감지하지 못한다. 항상 새 스냅샷으로 교체한다.
   Set<String> _scratched = const <String>{};
   final _cache = MapPictureCache();
+
+  /// 바다 배경. 은박 색도 여기서 따라온다 — 배경이 밝아지면 은박이 함께
+  /// 조정되지 않으면 미수집 지역이 배경에 묻힌다.
+  final SeaPalette _sea = kSeaAdopted;
+  final _seaCache = SeaBackgroundCache();
 
   /// 애니메이션 틱 수. 프레임이 안 나올 때 "애니메이션이 멈춘 것"인지
   /// "그리다가 못 따라가는 것"인지 구분하려면 이 값이 필요하다.
@@ -237,6 +243,7 @@ class _MapSpikePageState extends State<MapSpikePage>
     _tc.dispose();
     _stats.dispose();
     _cache.dispose();
+    _seaCache.dispose();
     super.dispose();
   }
 
@@ -305,8 +312,9 @@ class _MapSpikePageState extends State<MapSpikePage>
             data: d,
             scratched: _scratched,
             showSidoLines: _sidoLines,
-            seaColor: const Color(0xFF16303D),
-            foilColor: const Color(0xFF474553),
+            sea: _sea,
+            seaCache: _seaCache,
+            foilColor: _sea.foil,
             config: _config,
             cache: _cache,
             selected: _selected,
