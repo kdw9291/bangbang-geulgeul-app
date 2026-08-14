@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 
 import 'map_data.dart';
+import 'region_art.dart';
 
 /// 렌더 방식 — **어떻게 그리는가**만 나타낸다.
 ///
@@ -57,6 +58,18 @@ class RenderConfig {
   String toString() => label;
 }
 
+/// 지도에 아트를 그릴 최소 크기 (지도 좌표 = km).
+///
+/// 전국 뷰 세로 700px 기준으로 이보다 작으면 아트가 몇 px 밖에 안 되어
+/// 형체를 알 수 없다. 지도 크기는 489×623km 다.
+const kMapArtMinSide = 18.0;
+
+/// 지도 아트의 투명도.
+///
+/// 지도의 본래 목적은 **수집 현황을 한눈에 보는 것**이다. 아트를 진하게 그리면
+/// 시도 색이 묻혀 어디를 채웠는지 읽기 어려워진다. 옅게 얹어 질감만 준다.
+const kMapArtOpacity = 0.42;
+
 void _paintMap(
   Canvas canvas,
   MapData data,
@@ -72,9 +85,27 @@ void _paintMap(
     ..color = Colors.white.withValues(alpha: 0.55);
 
   for (final r in data.regions) {
-    fill.color = scratched.contains(r.code) ? kSidoColors[r.sido] : foil;
+    final done = scratched.contains(r.code);
+    fill.color = done ? kSidoColors[r.sido] : foil;
     canvas.drawPath(r.path, fill);
     if (stroke) canvas.drawPath(r.path, hair);
+
+    // 수집한 지역에만 아트를 얹는다. 아직 안 긁은 지역을 보여주면
+    // 긁을 이유가 없어진다 ("가리고 긁을 때 공개").
+    //
+    // **큰 지역에만 그린다.** 전국 뷰에서 최소 지역은 한 변이 약 2px 이라
+    // 그려도 보이지 않고 래스터 비용만 늘어난다 (T3 실측: 최소 부산 중구
+    // 3.0km² vs 최대 홍천군 1,807.5km², 611배).
+    if (done && r.bounds.shortestSide >= kMapArtMinSide) {
+      final art = artForRegion(r.code);
+      if (art != null) {
+        canvas.save();
+        canvas.clipPath(r.path);
+        paintRegionArt(canvas, art, artTargetFill(r.path, r.bounds),
+            opacity: kMapArtOpacity, variant: artVariantFor(r.code));
+        canvas.restore();
+      }
+    }
   }
 
   if (sidoLines) {

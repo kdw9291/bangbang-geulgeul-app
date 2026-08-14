@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -7,6 +8,7 @@ import 'frame_stats.dart';
 import 'hit_test.dart';
 import 'map_data.dart';
 import 'map_painter.dart';
+import 'region_art.dart';
 import 'scratch_page.dart';
 
 void main() => runApp(const MapScratchApp());
@@ -393,12 +395,16 @@ class _RegionSheet extends StatelessWidget {
                     style: const TextStyle(color: Colors.white54, fontSize: 13)),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 14),
+            _RegionArtCard(region: region, color: color, revealed: scratched),
+            const SizedBox(height: 14),
             Text(
               scratched
-                  ? '이미 수집한 지역이에요. 지도에서 색으로 채워져 있습니다.'
-                  : '$sidoName ${region.name}의 소개와 랜드마크는 준비 중이에요. '
-                      '복권처럼 긁어서 이 지역을 수집해 보세요.',
+                  ? _artName(region) == null
+                      ? '이미 수집한 지역이에요.'
+                      : '이미 수집한 지역이에요. ${_artName(region)}.'
+                  : '복권처럼 긁어서 이 지역을 수집해 보세요. '
+                      '무엇이 나올지는 긁어야 알 수 있어요.',
               style: const TextStyle(
                   color: Colors.white70, fontSize: 14, height: 1.5),
             ),
@@ -422,6 +428,109 @@ class _RegionSheet extends StatelessWidget {
     );
   }
 }
+
+/// 팝업의 아트 자리. 소개 글이 비어 있던 곳이다.
+///
+/// **아직 안 긁은 지역은 아트를 가린다.** "가리고 긁을 때 공개" 결정(2026-08-13)이
+/// 팝업에도 적용된다 — 여기서 미리 보여주면 긁을 이유가 없어진다.
+class _RegionArtCard extends StatelessWidget {
+  const _RegionArtCard({
+    required this.region,
+    required this.color,
+    required this.revealed,
+  });
+
+  final Region region;
+  final Color color;
+  final bool revealed;
+
+  @override
+  Widget build(BuildContext context) {
+    final art = artForRegion(region.code);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: SizedBox(
+        height: 150,
+        width: double.infinity,
+        child: CustomPaint(
+          painter: _ArtCardPainter(
+            art: art,
+            color: color,
+            revealed: revealed,
+            variant: artVariantFor(region.code),
+          ),
+          child: revealed || art == null
+              ? null
+              : const Center(
+                  child: Text(
+                    '?',
+                    style: TextStyle(
+                      color: Colors.white24,
+                      fontSize: 52,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ArtCardPainter extends CustomPainter {
+  _ArtCardPainter({
+    required this.art,
+    required this.color,
+    required this.revealed,
+    required this.variant,
+  });
+
+  final RegionArt? art;
+  final Color color;
+  final bool revealed;
+  final ArtVariant variant;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    if (!revealed) {
+      // 긁기 화면의 은박과 같은 결. 무엇이 있는지 알 수 없게 둔다.
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..shader = ui.Gradient.linear(
+            rect.topLeft,
+            rect.bottomRight,
+            const [Color(0xFF5A5766), Color(0xFF3B3944), Color(0xFF5A5766)],
+            const [0, .5, 1],
+          ),
+      );
+      return;
+    }
+    canvas.drawRect(rect, Paint()..color = color);
+    if (art case final a?) {
+      // 카드는 가로로 길다. 정사각형 아트를 세로에 맞춰 넣으면 좌우가 남으므로
+      // 긴 변에 맞춰 채우고 넘치는 부분을 잘라낸다 — 긁기 화면의 B 배치와 같다.
+      final side = math.max(size.width, size.height);
+      final target = Rect.fromCenter(
+          center: rect.center, width: side, height: side);
+      canvas.save();
+      canvas.clipRect(rect);
+      paintRegionArt(canvas, a, target, variant: variant);
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ArtCardPainter old) =>
+      old.revealed != revealed ||
+      old.color != color ||
+      !identical(old.art, art) ||
+      old.variant != variant;
+}
+
+/// 팝업 문구에 쓸 아트 이름. 랜드마크면 소재 이름, 카테고리면 `null`.
+String? _artName(Region region) => kLandmarkArt[region.code]?.name;
 
 class _StatsBar extends StatelessWidget {
   const _StatsBar({required this.stats, required this.data, this.selected});

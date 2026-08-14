@@ -414,6 +414,20 @@ bool _fitsIn(Path path, Rect r) {
   return true;
 }
 
+/// 파싱한 `Path` 를 `d` 문자열로 캐시한다.
+///
+/// 지도에 아트를 얹으면 한 번 기록할 때 146개 지역 × 도형 수만큼 파싱이 돈다.
+/// 실측 결과 지도 Picture 기록이 0.9ms → 14.7ms 로 늘었고, 그 대부분이 파싱이었다.
+/// `d` 는 상수 문자열이고 `Path` 는 그리기만 하므로 재사용해도 안전하다
+/// (배경 이동은 `shift` 가 새 Path 를 만든다).
+final Map<String, Path> _pathCache = {};
+
+Path _pathFor(String d) => _pathCache.putIfAbsent(d, () => parseSvgPath(d));
+
+/// 테스트에서 캐시 효과를 재기 위해 비운다.
+@visibleForTesting
+void clearArtPathCache() => _pathCache.clear();
+
 /// [art] 를 [target] 에 맞춰 그린다. [opacity] 로 전체 투명도를 조절한다.
 void paintRegionArt(
   Canvas canvas,
@@ -438,7 +452,7 @@ void paintRegionArt(
       p = Path()
         ..addOval(Rect.fromCircle(center: Offset(c.$1, c.$2), radius: c.$3));
     } else {
-      p = parseSvgPath(s.d);
+      p = _pathFor(s.d);
     }
     // 배경만 옆으로 민다. 핵심 모티프를 밀면 안전 영역을 벗어난다.
     if (s.layer == ArtLayer.background && variant.bgShift != 0) {
