@@ -7,9 +7,9 @@ import 'package:mapscratch/main.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('지도 에셋이 시군구 256개와 시도 16개를 담고 있다', () async {
+  test('지도 에셋이 긁기 단위 231개와 시도 16개를 담고 있다', () async {
     final data = await MapData.load();
-    expect(data.regions.length, 256);
+    expect(data.regions.length, 231);
     expect(data.sidoNames.length, 16);
     expect(data.sidoLines.length, 16);
     expect(data.vertexCount, greaterThan(10000));
@@ -22,7 +22,7 @@ void main() {
     }
 
     // 코드는 유일해야 한다 — 긁은 상태를 코드로 저장하기 때문
-    expect(data.regions.map((r) => r.code).toSet().length, 256);
+    expect(data.regions.map((r) => r.code).toSet().length, 231);
   });
 
   test('지도 비율이 실제 국토에 가깝다', () async {
@@ -47,7 +47,7 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.byType(CustomPaint), findsWidgets);
       expect(find.text('벤치마크 시작'), findsOneWidget);
-      expect(find.textContaining('지역 256개'), findsOneWidget);
+      expect(find.textContaining('지역 231개'), findsOneWidget);
     });
   });
 }

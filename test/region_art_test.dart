@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mapscratch/region_art.dart';
+import 'package:mapscratch/region_category.g.dart';
 
 Rect _boundsOf(ArtShape s) {
   final c = s.circle;
@@ -230,8 +231,8 @@ void main() {
 
     test('파일럿 대상 10개 전부가 아트를 받는다', () {
       const pilot = [
-        '47130', '41115', '47170', '50110', '12150', '47940',
-        '11110', '12770', '28720', '26140',
+        '47130', '41115', '47170', '50000', '12150', '47940',
+        '11000', '12770', '28720', '26140',
       ];
       for (final c in pilot) {
         expect(artForRegion(c), isNotNull, reason: c);
@@ -260,28 +261,31 @@ void main() {
     test('랜드마크는 변형하지 않는다', () {
       // 첨성대를 좌우로 뒤집을 이유가 없다.
       expect(artVariantFor('47130'), ArtVariant.none);
-      expect(artVariantFor('50110'), ArtVariant.none);
+      expect(artVariantFor('50000'), ArtVariant.none);
     });
 
-    test('서울 25개가 충분히 다른 그림을 받는다', () {
-      // 이 변형을 넣은 이유가 바로 서울이다. 배정은 전부 city 가 맞지만
-      // 장면이 하나뿐이면 같은 그림을 24번 보게 된다.
-      const seoul = [
-        '11110', '11140', '11170', '11200', '11215', '11230', '11260',
-        '11290', '11305', '11320', '11350', '11380', '11410', '11440',
-        '11470', '11500', '11530', '11545', '11560', '11590', '11620',
-        '11650', '11680', '11710', '11740',
-      ];
+    test('도시로 배정된 지역들이 충분히 다른 그림을 받는다', () {
+      // 원래 이 변형은 서울 25개 구가 같은 그림을 쓰는 문제 때문에 넣었다.
+      // 2026-08-14 통합으로 서울은 1개가 됐지만, 수도권 시·군과 광역시 자치구가
+      // 여전히 도시로 몰린다(주 노출 195개 중 69개).
+      final cityCodes = kRegionCategory.entries
+          .where((e) => e.value == ArtCategory.city)
+          .map((e) => e.key)
+          .toList();
+      expect(cityCodes.length, greaterThan(50));
+
       final looks = <String>{};
       final layouts = <int>{};
-      for (final c in seoul) {
+      for (final c in cityCodes) {
         final v = ArtVariant.forCode(c);
         looks.add('${v.layout}/${v.mirror}/${v.bgShift}');
         layouts.add(v.layout);
       }
-      debugPrint('서울 25개 · 구분되는 조합 ${looks.length}가지 · 배치 ${layouts.length}종');
-      expect(looks.length, greaterThanOrEqualTo(18));
-      expect(layouts.length, greaterThanOrEqualTo(4));
+      debugPrint('도시 ${cityCodes.length}개 · 구분되는 조합 ${looks.length}가지 '
+          '· 배치 ${layouts.length}종');
+      // 60가지 조합이 있으므로 도시 지역 수가 많아도 대부분 구분된다.
+      expect(looks.length, greaterThanOrEqualTo(30));
+      expect(layouts.length, kCityLayoutCount); // 배치 6종을 모두 쓴다
     });
 
     test('도시 장면 6종의 핵심이 모두 안전 영역 안에 있다', () {
@@ -392,7 +396,7 @@ void main() {
       final cache = RegionArtCache();
       const target = Rect.fromLTRB(0, 0, 100, 100);
       final a = cache.obtain(kLandmarkArt['47130']!, target);
-      final b = cache.obtain(kLandmarkArt['50110']!, target);
+      final b = cache.obtain(kLandmarkArt['50000']!, target);
       expect(identical(a, b), isFalse);
       cache.dispose();
     });

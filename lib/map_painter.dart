@@ -11,7 +11,7 @@ import 'map_data.dart';
 /// [picture] 는 구조적으로 획을 그릴 수 없었고, 정작 실제로 쓸 조합(Picture + 획)은
 /// 한 번도 측정되지 않았다. 두 축을 [RenderConfig] 로 분리했다.
 enum RenderMode {
-  /// 매 프레임 256개 Path 를 직접 그린다 (최초 구현).
+  /// 매 프레임 지역 Path 를 직접 그린다 (최초 구현).
   direct,
 
   /// 지도를 ui.Picture 로 한 번 기록해두고 매 프레임 재생만 한다.

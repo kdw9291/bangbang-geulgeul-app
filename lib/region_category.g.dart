@@ -10,31 +10,7 @@ import 'art_category.dart';
 
 /// 시군구 코드 → 카테고리. 랜드마크가 있는 지역도 폴백으로 가진다.
 const Map<String, ArtCategory> kRegionCategory = {
-  '11110': ArtCategory.city, // 서울 자치구
-  '11140': ArtCategory.city, // 서울 자치구
-  '11170': ArtCategory.city, // 서울 자치구
-  '11200': ArtCategory.city, // 서울 자치구
-  '11215': ArtCategory.city, // 서울 자치구
-  '11230': ArtCategory.city, // 서울 자치구
-  '11260': ArtCategory.city, // 서울 자치구
-  '11290': ArtCategory.city, // 서울 자치구
-  '11305': ArtCategory.city, // 서울 자치구
-  '11320': ArtCategory.city, // 서울 자치구
-  '11350': ArtCategory.city, // 서울 자치구
-  '11380': ArtCategory.city, // 서울 자치구
-  '11410': ArtCategory.city, // 서울 자치구
-  '11440': ArtCategory.city, // 서울 자치구
-  '11470': ArtCategory.city, // 서울 자치구
-  '11500': ArtCategory.city, // 서울 자치구
-  '11530': ArtCategory.city, // 서울 자치구
-  '11545': ArtCategory.city, // 서울 자치구
-  '11560': ArtCategory.city, // 서울 자치구
-  '11590': ArtCategory.city, // 서울 자치구
-  '11620': ArtCategory.city, // 서울 자치구
-  '11650': ArtCategory.city, // 서울 자치구
-  '11680': ArtCategory.city, // 서울 자치구
-  '11710': ArtCategory.city, // 서울 자치구
-  '11740': ArtCategory.city, // 서울 자치구
+  '11000': ArtCategory.city, // 서울 도심 — 25개 구를 합친 긁기 단위
   '26110': ArtCategory.city, // 부산 도심
   '26140': ArtCategory.sea, // 부산 해안
   '26170': ArtCategory.city, // 부산 도심
@@ -246,8 +222,7 @@ const Map<String, ArtCategory> kRegionCategory = {
   '48870': ArtCategory.mountain, // 지리산 함양 자락과 상림
   '48880': ArtCategory.mountain, // 거창 덕유산 자락
   '48890': ArtCategory.mountain, // 가야산 — 해인사 랜드마크의 폴백
-  '50110': ArtCategory.island, // 제주도 — 돌하르방 랜드마크의 폴백
-  '50130': ArtCategory.sea, // 중문·서귀포 해안
+  '50000': ArtCategory.island, // 제주도 — 돌하르방 랜드마크의 폴백
   '41192': ArtCategory.city, // 수도권 도심
   '41194': ArtCategory.city, // 수도권 도심
   '41196': ArtCategory.city, // 수도권 도심
@@ -270,7 +245,7 @@ const Map<String, ArtCategory> kRegionCategory = {
 
 /// 계획된 랜드마크 36개. 분포 검사에서 주 노출을 계산할 때 쓴다.
 const Set<String> kPlannedLandmarks = {
-  '11170',
+  '11000',
   '28710',
   '28720',
   '41115',
@@ -298,7 +273,7 @@ const Set<String> kPlannedLandmarks = {
   '26350',
   '31710',
   '31170',
-  '50110',
+  '50000',
   '41610',
   '41830',
   '41820',

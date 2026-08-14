@@ -8,7 +8,7 @@ import 'package:mapscratch/map_data.dart';
 import 'package:mapscratch/region_art.dart';
 import 'package:mapscratch/region_category.g.dart';
 
-/// 256개 카테고리 배정을 **전국 지도 위에서 눈으로 보는 도구.** 검사가 아니다.
+/// 231개 카테고리 배정을 **전국 지도 위에서 눈으로 보는 도구.** 검사가 아니다.
 ///
 /// 표로만 보면 이상한 배정을 못 잡는다. 인접 지역과 견줘 봐야
 /// "여기만 왜 혼자 바다지?" 같은 것이 드러난다.
@@ -88,15 +88,14 @@ void main() {
     expect(out.existsSync(), isTrue);
   });
 
-  test('서울 25개 도시 장면을 나란히 그린다', () async {
-    // 변형이 실제로 눈에 띄는지 본다. 수치로는 21가지지만
-    // 사람 눈에 다르게 보이는지는 봐야 안다.
-    const seoul = [
-      '11110', '11140', '11170', '11200', '11215', '11230', '11260',
-      '11290', '11305', '11320', '11350', '11380', '11410', '11440',
-      '11470', '11500', '11530', '11545', '11560', '11590', '11620',
-      '11650', '11680', '11710', '11740',
-    ];
+  test('도시 장면 변형 25개를 나란히 그린다', () async {
+    // 변형이 실제로 눈에 띄는지 본다. 수치로 구분된다고 사람 눈에도
+    // 다르게 보이는 건 아니다.
+    final seoul = kRegionCategory.entries
+        .where((e) => e.value == ArtCategory.city)
+        .map((e) => e.key)
+        .take(25)
+        .toList();
 
     const cell = 200.0;
     const cols = 5;

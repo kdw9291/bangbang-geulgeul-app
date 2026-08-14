@@ -46,7 +46,7 @@ void main() {
 
   setUpAll(() async {
     data = await MapData.load();
-    jeju = data.regions.firstWhere((r) => r.name == '서귀포시');
+    jeju = data.regions.firstWhere((r) => r.name == '제주특별자치도');
     ongjin = data.regions.firstWhere((r) => r.name == '옹진군');
   });
 
@@ -140,7 +140,7 @@ void main() {
     expect(p.reachedTarget, isTrue);
   });
 
-  test('256개 지역 전부가 목표 표본 수를 만족한다', () {
+  test('231개 지역 전부가 목표 표본 수를 만족한다', () {
     final short = <String, int>{};
     for (final r in data.regions) {
       final p = make(r);

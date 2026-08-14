@@ -29,7 +29,7 @@ class MapScratchApp extends StatelessWidget {
 }
 
 /// T2 지도 렌더 스파이크.
-/// 목적은 두 가지다 — 256개 폴리곤이 렌더되는가, 확대·이동 중 60fps 가 유지되는가.
+/// 목적은 두 가지다 — 231개 폴리곤이 렌더되는가, 확대·이동 중 60fps 가 유지되는가.
 class MapSpikePage extends StatefulWidget {
   const MapSpikePage({super.key});
 
@@ -209,7 +209,8 @@ class _MapSpikePageState extends State<MapSpikePage>
     );
     if (done == true && mounted) {
       setState(() => _scratched = {..._scratched, r.code});
-      debugPrint('[SCRATCH] 지도 반영 ${r.code} · 수집 ${_scratched.length}/256');
+      debugPrint('[SCRATCH] 지도 반영 ${r.code} · '
+          '수집 ${_scratched.length}/${_data!.regions.length}');
     }
   }
 

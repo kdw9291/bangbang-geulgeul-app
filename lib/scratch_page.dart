@@ -222,7 +222,11 @@ class _ScratchPageState extends State<ScratchPage>
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '${widget.sidoName} ${widget.region.name}',
+                    // 통합 긁기 단위는 지역명이 시도명과 같다.
+                    // 그대로 이으면 "서울특별시 서울특별시" 가 된다.
+                    widget.sidoName == widget.region.name
+                        ? widget.region.name
+                        : '${widget.sidoName} ${widget.region.name}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 18,
