@@ -116,8 +116,8 @@ void main() {
   });
 
   group('파일럿 아트 데이터', () {
-    test('랜드마크 36개 · 카테고리 8종이 모두 파싱된다', () {
-      expect(kLandmarkArt.length, 36);
+    test('랜드마크 37개 · 카테고리 8종이 모두 파싱된다', () {
+      expect(kLandmarkArt.length, 37);
       expect(kCategoryArt.length, ArtCategory.values.length);
 
       for (final art in [...kLandmarkArt.values, ...kCategoryArt.values]) {
@@ -206,7 +206,7 @@ void main() {
       //
       // **예외를 추가하려면 provenance 에 위험과 결정 근거를 먼저 적는다.**
       const safe = {
-        '첨성대', '수원화성 팔달문', '하회마을', '돌하르방', '순천만 갈대밭', '울릉도',
+        '첨성대', '수원화성 팔달문', '하회마을', '돌하르방', '순천만 갈대밭', '울릉도', '독도',
         '강화 고인돌', '백령도 두무진', '계양산', '세종대왕릉', '남한산성',
         '두물머리', '자라섬·북한강',
         '설악산', '월정사 구층석탑', '법주사 팔상전', '도담삼봉',

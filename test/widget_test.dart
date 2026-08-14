@@ -7,9 +7,9 @@ import 'package:mapscratch/main.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('지도 에셋이 긁기 단위 231개와 시도 16개를 담고 있다', () async {
+  test('지도 에셋이 긁기 단위 232개와 시도 16개를 담고 있다', () async {
     final data = await MapData.load();
-    expect(data.regions.length, 231);
+    expect(data.regions.length, 232);
     expect(data.sidoNames.length, 16);
     expect(data.sidoLines.length, 16);
     expect(data.vertexCount, greaterThan(10000));
@@ -17,12 +17,40 @@ void main() {
     // 시도 인덱스가 색 배열 범위를 벗어나면 렌더에서 터진다
     for (final r in data.regions) {
       expect(r.sido, inInclusiveRange(0, kSidoColors.length - 1));
-      expect(r.scratchUnitId.length, 5);
       expect(r.bounds.isEmpty, isFalse);
+
+      // **길이를 5로 못 박지 않는다.** `scratchUnitId` 는 불투명 ID 계약이라
+      // 자릿수에 의미를 두지 않는다. 통계청 코드 5자리와 합성 ID `11000`·`50000`,
+      // 독도 `DK001` 이 우연히 전부 5문자일 뿐이고, 다음에 신설하는 단위가
+      // 그럴 이유는 없다.
+      //
+      // 대신 **문자 집합은 계약으로 둔다.** 저장·URL·서버 DTO 로 그대로 나가는
+      // 값이라 공백·제어문자·구분자가 섞이면 조용히 깨진다. 길이를 뺀 자리를
+      // "비어 있지 않다" 로만 채우면 `DK 001` 같은 값이 통과한다 (Codex 14회차).
+      expect(r.scratchUnitId, matches(RegExp(r'^[A-Za-z0-9]+$')),
+          reason: '영숫자만 쓴다: "${r.scratchUnitId}"');
     }
 
     // 코드는 유일해야 한다 — 긁은 상태를 코드로 저장하기 때문
-    expect(data.regions.map((r) => r.scratchUnitId).toSet().length, 231);
+    expect(data.regions.map((r) => r.scratchUnitId).toSet().length, 232);
+  });
+
+  test('모든 링이 닫혀 있다', () async {
+    // `Region.distanceTo()` 는 연속한 정점 쌍만 훑는다. 링이 닫혀 있지 않으면
+    // **마지막→첫 정점 변이 거리 계산에서 통째로 빠져** 그 변 쪽 탭 허용 오차가
+    // 사라진다. 원본 GeoJSON 은 전부 닫혀 오지만, 독도처럼 손으로 만들어 넣는
+    // 지역이 생기면 이 불변식이 조용히 깨진다 — 실제로 한 번 깨뜨렸다.
+    final data = await MapData.load();
+    final open = <String>[];
+    for (final r in data.regions) {
+      for (final ring in r.rings) {
+        final n = ring.length;
+        if (ring[0] != ring[n - 2] || ring[1] != ring[n - 1]) {
+          open.add('${r.scratchUnitId} ${r.name}');
+        }
+      }
+    }
+    expect(open, isEmpty);
   });
 
   test('지도 비율이 실제 국토에 가깝다', () async {
@@ -47,7 +75,7 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsNothing);
       expect(find.byType(CustomPaint), findsWidgets);
       expect(find.text('벤치마크 시작'), findsOneWidget);
-      expect(find.textContaining('지역 231개'), findsOneWidget);
+      expect(find.textContaining('지역 232개'), findsOneWidget);
     });
   });
 

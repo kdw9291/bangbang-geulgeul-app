@@ -54,7 +54,7 @@ class _MapScratchAppState extends State<MapScratchApp> {
 }
 
 /// T2 지도 렌더 스파이크.
-/// 목적은 두 가지다 — 231개 폴리곤이 렌더되는가, 확대·이동 중 60fps 가 유지되는가.
+/// 목적은 두 가지다 — 232개 폴리곤이 렌더되는가, 확대·이동 중 60fps 가 유지되는가.
 class MapSpikePage extends StatefulWidget {
   const MapSpikePage({super.key, required this.sea});
 

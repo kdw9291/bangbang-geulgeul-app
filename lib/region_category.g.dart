@@ -11,7 +11,8 @@ import 'art_category.dart';
 /// `Region.scratchUnitId` → 카테고리. 랜드마크가 있는 지역도 폴백으로 가진다.
 ///
 /// 키는 통계청 시군구 코드와 대부분 같지만 전부는 아니다 —
-/// 서울 `11000` · 제주 `50000` 은 통합으로 생긴 합성 ID 다.
+/// 서울 `11000` · 제주 `50000` 은 통합으로 생긴 합성 ID 이고
+/// 독도 `DK001` 은 신설한 긁기 단위라 통계청 네임스페이스 밖이다.
 const Map<String, ArtCategory> kRegionCategory = {
   '11000': ArtCategory.city, // 서울 도심 — 25개 구를 합친 긁기 단위
   '26110': ArtCategory.city, // 부산 도심
@@ -244,9 +245,10 @@ const Map<String, ArtCategory> kRegionCategory = {
   '52770': ArtCategory.field, // 순창 고추장마을
   '52790': ArtCategory.field, // 고창 청보리밭
   '52800': ArtCategory.sea, // 변산반도 — 채석강 랜드마크의 폴백
+  'DK001': ArtCategory.island, // 독도 — 동도·서도 두 바위섬
 };
 
-/// 계획된 랜드마크 36개. 분포 검사에서 주 노출을 계산할 때 쓴다.
+/// 계획된 랜드마크 37개. 분포 검사에서 주 노출을 계산할 때 쓴다.
 const Set<String> kPlannedLandmarks = {
   '11000',
   '28710',
@@ -284,4 +286,5 @@ const Set<String> kPlannedLandmarks = {
   '26200',
   '48170',
   '47940',
+  'DK001',
 };

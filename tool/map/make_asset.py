@@ -22,7 +22,7 @@ clone 하면 **에셋을 재생성할 수도 검증할 수도 없었다.** 카�
 import json, sys, io, math, os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from merge_spec import unit_for, MERGED_SIDOS  # noqa: E402
+from merge_spec import unit_for, MERGED_SIDOS, DOKDO, dokdo_rings  # noqa: E402
 
 # **북한 배경 입력은 기본적으로 필수다.**
 #
@@ -76,6 +76,21 @@ missing = MERGED_SIDOS - {SIDOS[r['s']] for r in raw}
 if missing:
     sys.exit('병합 대상 시도가 입력에 없다: %s' % missing)
 
+# ── 독도 (2026-08-14) ────────────────────────────────────────────
+#
+# 원본 GeoJSON 에 없어 모양과 위치를 명세에서 직접 만든다 — `merge_spec.py` 참고.
+# **울릉군보다 오른쪽으로 나가지 않게** 놓으므로 아래의 프레임 계산이 바뀌지 않는다.
+anchor = next((r for r in raw if r['c'] == DOKDO['anchor']), None)
+if anchor is None:
+    sys.exit('독도 기준 지역이 입력에 없다: %s' % DOKDO['anchor'])
+apts = [p for ring in anchor['rings'] for p in ring]
+abounds = (min(x for x, _ in apts), min(y for _, y in apts),
+           max(x for x, _ in apts), max(y for _, y in apts))
+if DOKDO['code'] in {r['c'] for r in raw}:
+    sys.exit('독도 코드가 원본에 이미 있다: %s' % DOKDO['code'])
+raw.append({'c': DOKDO['code'], 'n': DOKDO['name'], 's': SIDX[DOKDO['sido']],
+            'rings': dokdo_rings(abounds)})
+
 # **지도 프레임은 남한(긁기 단위)만으로 정한다.**
 #
 # 북한 배경을 여기 섞으면 `oy`·`H` 가 바뀌어 **남한 좌표가 전부 재계산되고
@@ -84,6 +99,20 @@ if missing:
 # 적용해 **y 가 음수인 좌표**로 둔다 — 남한 위쪽에 놓인다는 뜻이다.
 xs = [x for r in raw for ring in r['rings'] for x, _ in ring]
 ys = [y for r in raw for ring in r['rings'] for _, y in ring]
+
+# **독도가 프레임을 넓히지 않았는지 확인한다.**
+#
+# 넓히면 남한 좌표가 전부 재계산되어 화면에서 작아진다 — 북한을 프레임에서 뺀 것과
+# 같은 이유다. 명세의 배치 규칙이 이를 보장하지만, 규칙을 고쳤을 때 조용히
+# 넘어가면 안 되므로 검사한다.
+_o = [(x, y) for r in raw if r['c'] != DOKDO['code']
+      for ring in r['rings'] for x, y in ring]
+if (min(xs), max(xs), min(ys), max(ys)) != (
+        min(x for x, _ in _o), max(x for x, _ in _o),
+        min(y for _, y in _o), max(y for _, y in _o)):
+    sys.exit('독도가 지도 프레임을 넓힌다 — 남한이 화면에서 작아진다. '
+             'merge_spec.DOKDO 의 배치 규칙을 확인할 것')
+
 PAD = 10.0
 ox, oy = min(xs) - PAD, min(ys) - PAD
 W, H = max(xs) - min(xs) + PAD*2, max(ys) - min(ys) + PAD*2

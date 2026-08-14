@@ -140,7 +140,7 @@ void main() {
     expect(p.reachedTarget, isTrue);
   });
 
-  test('231개 지역 전부가 목표 표본 수를 만족한다', () {
+  test('232개 지역 전부가 목표 표본 수를 만족한다', () {
     final short = <String, int>{};
     for (final r in data.regions) {
       final p = make(r);

@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-"""231개 긁기 단위 카테고리 배정표 — 단일 원본.
+"""232개 긁기 단위 카테고리 배정표 — 단일 원본.
 
 배정 대상은 시군구가 아니라 **긁기 단위**(`scratchUnitId`)다. 대부분은 통계청
-시군구 코드 5자리와 같지만, 2026-08-14 통합으로 서울 `11000` · 제주 `50000` 은
-통계청 코드가 아닌 합성 ID 다. 병합 명세는 `design/tools/merge_spec.py` 이나
-**이 파일이 그것을 import 하지는 않는다** — 아래 두 코드는 여기에도 적혀 있다.
+시군구 코드 5자리와 같지만 셋은 아니다 — 통합으로 생긴 서울 `11000` · 제주 `50000`,
+신설한 독도 `DK001`. **이 셋의 코드와 이름은 `tool/map/merge_spec.py` 가 원본이고
+이 파일이 그것을 import 한다** (2026-08-14). 예전에는 여기에 다시 적어 두어
+두 곳이 어긋날 수 있었다.
 
 카테고리는 **여행자가 떠올리는 대표 이미지**다 (2026-08-13 사용자 결정).
 객관적 지형 분류가 아니다. 그래서 지도 기하 신호는 후보를 좁히고 모순을 잡는 데만 쓰고,
@@ -32,6 +33,10 @@ from collections import Counter, defaultdict
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.dirname(os.path.dirname(HERE))  # source/android
+
+sys.path.insert(0, os.path.join(APP, 'tool/map'))
+from merge_spec import MERGE, DOKDO  # noqa: E402
+
 ASSET = os.path.join(APP, 'assets/map/korea_sgg.json')
 SIGNALS = os.path.join(HERE, 'region-signals.json')
 MD_OUT = os.path.join(HERE, 'assignment.md')
@@ -40,15 +45,16 @@ DART_OUT = os.path.join(APP, 'lib/region_category.g.dart')
 # 아이콘 8종
 CATS = ['mountain', 'sea', 'island', 'city', 'heritage', 'hotspring', 'river', 'field']
 
-# 계획된 랜드마크 36개. `design/art-landmark-candidates.md` 와 같아야 한다.
-# 여기 두는 이유는 **최종 220개 기준 분포**를 기계로 검사하기 위해서다.
+# 계획된 랜드마크 37개. `design/art-landmark-candidates.md` 와 같아야 한다.
+# 여기 두는 이유는 **주 노출 기준 분포**를 기계로 검사하기 위해서다.
 # 랜드마크가 있는 지역도 카테고리를 폴백으로 가지므로 배정에서 빼지는 않는다.
-# 서울(11170 용산구)·제주(50110 제주시)는 통합으로 코드가 바뀌었다.
+# 서울(11170 용산구)·제주(50110 제주시)는 통합으로 코드가 바뀌었고,
+# 독도는 2026-08-14 에 신설되며 37번째 랜드마크를 받는다 (사용자 결정).
 PLANNED_LANDMARKS = '''
 11000 28710 28720 41115 41670 51210 51760 43720 43800 44760 44150 30200 30110
 36110 52190 52800 12150 12210 47130 47170 27140 27710 48220 48890 26410 26350
 31710 31170 50000 41610 41830 41820 28245 26200 48170 47940
-'''.split()
+'''.split() + [DOKDO['code']]
 
 # code -> (category, reason)
 A = {}
@@ -63,8 +69,8 @@ def put(codes, cat, reason):
 
 # ── 서울특별시 1 ───────────────────────────────────────────────
 # 2026-08-14 사용자 결정으로 25개 구를 하나의 긁기 단위로 합쳤다.
-# 병합 명세는 `design/tools/merge_spec.py`, 코드는 `sgg` 가 아니라 합성 ID 다.
-put('11000', 'city', '서울 도심 — 25개 구를 합친 긁기 단위')
+# 병합 명세는 `tool/map/merge_spec.py`, 코드는 `sgg` 가 아니라 합성 ID 다.
+put(MERGE['서울특별시']['code'], 'city', '서울 도심 — 25개 구를 합친 긁기 단위')
 
 # ── 인천광역시 11 ──────────────────────────────────────────────
 put('28155', 'island', '영종도 — 완전 섬')
@@ -209,6 +215,9 @@ put('47830', 'heritage', '대가야 고분군')
 put('47770', 'sea', '영덕 대게와 강구항')
 put('47930', 'sea', '울진 해안과 후포항')
 put('47940', 'island', '울릉도 — 완전 섬')
+# 2026-08-14 사용자 결정으로 신설한 별도 긁기 단위. 원본 GeoJSON 에 없어
+# 모양과 위치를 `tool/map/merge_spec.py` 에서 직접 준다.
+put(DOKDO['code'], 'island', '독도 — 동도·서도 두 바위섬')
 put('47150', 'mountain', '직지사와 황악산')
 put('47280', 'mountain', '문경새재')
 put('47750', 'mountain', '주왕산과 주산지')
@@ -262,7 +271,7 @@ put('31710', 'mountain', '영남알프스 — 반구대 랜드마크의 폴백')
 
 # ── 제주특별자치도 1 ───────────────────────────────────────────
 # 2026-08-14 사용자 결정으로 제주시·서귀포시를 하나로 합쳤다.
-put('50000', 'island', '제주도 — 돌하르방 랜드마크의 폴백')
+put(MERGE['제주특별자치도']['code'], 'island', '제주도 — 돌하르방 랜드마크의 폴백')
 
 
 def main():
@@ -386,7 +395,7 @@ def _markdown(codes, names, sidos, signals, dist, main_only, total_main):
     w('`미접촉경계` 는 **해안 비율이 아니다.** 다른 지역과 맞닿지 않는 경계 정점의 비율이며,\n')
     w('북한 쪽 인접 지역이 데이터에 없어 **휴전선 접경도 여기 잡힌다**.\n\n')
     w('## 분포\n\n')
-    w('| 카테고리 | 전체 256 | 주 노출 %d |\n|---|---|---|\n' % total_main)
+    w('| 카테고리 | 전체 %d | 주 노출 %d |\n|---|---|---|\n' % (len(codes), total_main))
     for k in CATS:
         w('| %s | %d | %d |\n' % (k, dist[k], main_only[k]))
     w('\n주 노출은 계획된 랜드마크 %d개를 뺀 값이다. 그 지역들은 카테고리를 폴백으로만 쓴다.\n\n'
@@ -424,7 +433,8 @@ def _dart(codes):
     w('/// `Region.scratchUnitId` → 카테고리. 랜드마크가 있는 지역도 폴백으로 가진다.\n')
     w('///\n')
     w('/// 키는 통계청 시군구 코드와 대부분 같지만 전부는 아니다 —\n')
-    w('/// 서울 `11000` · 제주 `50000` 은 통합으로 생긴 합성 ID 다.\n')
+    w('/// 서울 `11000` · 제주 `50000` 은 통합으로 생긴 합성 ID 이고\n')
+    w('/// 독도 `DK001` 은 신설한 긁기 단위라 통계청 네임스페이스 밖이다.\n')
     w('const Map<String, ArtCategory> kRegionCategory = {\n')
     for c in codes:
         cat, reason = A[c]

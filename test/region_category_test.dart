@@ -7,12 +7,12 @@ import 'package:mapscratch/map_data.dart';
 import 'package:mapscratch/region_art.dart';
 import 'package:mapscratch/region_category.g.dart';
 
-/// 231개 카테고리 배정 검증.
+/// 232개 카테고리 배정 검증.
 ///
 /// 배정 자체는 사람이 정한다 — 지도 에셋에 고도·토지이용·인구 데이터가 없어
 /// 산과 들판을 가를 신호가 아예 없기 때문이다(Codex 검토 2026-08-13).
 /// 그래서 여기서는 **의미가 아니라 정합성과 모순**을 검사한다.
-/// 원본은 `design/tools/make_category_map.py`.
+/// 원본은 `tool/category/make_category_map.py`.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -25,10 +25,10 @@ void main() {
       expect(kRegionCategory.keys.toSet(), mapCodes);
     });
 
-    test('231개 전부 배정돼 있다', () {
+    test('232개 전부 배정돼 있다', () {
       // 랜드마크가 있는 지역도 폴백으로 카테고리를 가진다.
       // 랜드마크를 빼거나 바꿔도 아트가 사라지지 않게 하기 위해서다.
-      expect(kRegionCategory.length, 231);
+      expect(kRegionCategory.length, 232);
     });
 
     test('생성물이 단일 원본과 일치한다', () {
@@ -55,7 +55,7 @@ void main() {
       }
     });
 
-    test('231개 전부 아트를 받는다 — 단색 폴백으로 떨어지는 지역이 없다', () {
+    test('232개 전부 아트를 받는다 — 단색 폴백으로 떨어지는 지역이 없다', () {
       for (final r in data.regions) {
         expect(artForRegion(r.scratchUnitId), isNotNull, reason: '${r.scratchUnitId} ${r.name}');
       }
@@ -147,7 +147,7 @@ void main() {
     test('계획된 랜드마크 코드가 모두 지도에 있다', () {
       final mapCodes = data.regions.map((r) => r.scratchUnitId).toSet();
       expect(kPlannedLandmarks.difference(mapCodes), isEmpty);
-      expect(kPlannedLandmarks.length, 36);
+      expect(kPlannedLandmarks.length, 37);
     });
   });
 
@@ -157,7 +157,7 @@ void main() {
     // 대신 수치를 찍어 두고 사람이 보게 한다.
 
     test('주 노출 195개 기준 분포를 보고한다', () {
-      // 계획된 랜드마크 36개는 카테고리를 폴백으로만 쓰므로 빼고 센다.
+      // 계획된 랜드마크 37개는 카테고리를 폴백으로만 쓰므로 빼고 센다.
       // 제작 진행도와 무관하게 최종 상태 기준으로 본다.
       final counts = <ArtCategory, int>{};
       for (final r in data.regions) {
@@ -173,7 +173,7 @@ void main() {
         debugPrint('  ${e.key.name.padRight(10)} ${e.value}개 '
             '(${(e.value / total * 100).toStringAsFixed(1)}%)');
       }
-      expect(total, 195); // 231 − 랜드마크 36
+      expect(total, 195); // 232 − 랜드마크 37
     });
 
     test('쓰이지 않는 카테고리를 보고한다', () {
