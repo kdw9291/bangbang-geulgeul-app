@@ -21,7 +21,7 @@ void main() {
 
   group('정합성', () {
     test('지도 코드와 배정 코드가 정확히 일치한다', () {
-      final mapCodes = data.regions.map((r) => r.code).toSet();
+      final mapCodes = data.regions.map((r) => r.scratchUnitId).toSet();
       expect(kRegionCategory.keys.toSet(), mapCodes);
     });
 
@@ -57,7 +57,7 @@ void main() {
 
     test('231개 전부 아트를 받는다 — 단색 폴백으로 떨어지는 지역이 없다', () {
       for (final r in data.regions) {
-        expect(artForRegion(r.code), isNotNull, reason: '${r.code} ${r.name}');
+        expect(artForRegion(r.scratchUnitId), isNotNull, reason: '${r.scratchUnitId} ${r.name}');
       }
     });
   });
@@ -71,9 +71,9 @@ void main() {
       // 단 휴전선 접경은 이 신호가 해안처럼 보이므로 반대 방향만 검사한다.
       final bad = <String>[];
       for (final r in data.regions) {
-        final cat = kRegionCategory[r.code]!;
+        final cat = kRegionCategory[r.scratchUnitId]!;
         if (cat != ArtCategory.sea && cat != ArtCategory.island) continue;
-        if (_unsharedRatio(data, r) < 0.05) bad.add('${r.code} ${r.name} $cat');
+        if (_unsharedRatio(data, r) < 0.05) bad.add('${r.scratchUnitId} ${r.name} $cat');
       }
       expect(bad, isEmpty);
     });
@@ -84,8 +84,8 @@ void main() {
       final bad = <String>[];
       for (final r in data.regions) {
         if (_unsharedRatio(data, r) < 0.99) continue;
-        if (kRegionCategory[r.code] != ArtCategory.island) {
-          bad.add('${r.code} ${r.name}');
+        if (kRegionCategory[r.scratchUnitId] != ArtCategory.island) {
+          bad.add('${r.scratchUnitId} ${r.name}');
         }
       }
       expect(bad, isEmpty);
@@ -94,7 +94,7 @@ void main() {
     test('서울·제주가 하나의 긁기 단위로 병합돼 있다', () {
       // 2026-08-14 사용자 결정. 병합 명세는 design/tools/merge_spec.py 이고
       // mapshaper -dissolve 가 위상 연산으로 처리한다.
-      final byCode = {for (final r in data.regions) r.code: r};
+      final byCode = {for (final r in data.regions) r.scratchUnitId: r};
 
       final seoul = byCode['11000'];
       expect(seoul, isNotNull, reason: '서울 통합 코드가 없다');
@@ -108,7 +108,7 @@ void main() {
 
       // 흡수된 옛 코드가 남아 있으면 안 된다.
       final leftovers = data.regions
-          .map((r) => r.code)
+          .map((r) => r.scratchUnitId)
           .where((c) => (c.startsWith('11') && c != '11000') ||
               (c.startsWith('50') && c != '50000'))
           .toList();
@@ -117,7 +117,7 @@ void main() {
 
     test('옛 서울 구 위치를 찍으면 통합 서울로 판정된다', () {
       // 병합이 기하적으로 온전한지 보는 검사다. 구멍이 남으면 여기서 걸린다.
-      final seoul = data.regions.firstWhere((r) => r.code == '11000');
+      final seoul = data.regions.firstWhere((r) => r.scratchUnitId == '11000');
       final b = seoul.bounds;
       var inside = 0;
       for (var i = 1; i < 10; i++) {
@@ -145,7 +145,7 @@ void main() {
     });
 
     test('계획된 랜드마크 코드가 모두 지도에 있다', () {
-      final mapCodes = data.regions.map((r) => r.code).toSet();
+      final mapCodes = data.regions.map((r) => r.scratchUnitId).toSet();
       expect(kPlannedLandmarks.difference(mapCodes), isEmpty);
       expect(kPlannedLandmarks.length, 36);
     });
@@ -161,9 +161,9 @@ void main() {
       // 제작 진행도와 무관하게 최종 상태 기준으로 본다.
       final counts = <ArtCategory, int>{};
       for (final r in data.regions) {
-        if (kPlannedLandmarks.contains(r.code)) continue;
-        counts[kRegionCategory[r.code]!] =
-            (counts[kRegionCategory[r.code]!] ?? 0) + 1;
+        if (kPlannedLandmarks.contains(r.scratchUnitId)) continue;
+        counts[kRegionCategory[r.scratchUnitId]!] =
+            (counts[kRegionCategory[r.scratchUnitId]!] ?? 0) + 1;
       }
       final total = counts.values.reduce((a, b) => a + b);
       final sorted = counts.entries.toList()
@@ -190,7 +190,7 @@ void main() {
       final bySido = <int, Set<ArtCategory>>{};
       final count = <int, int>{};
       for (final r in data.regions) {
-        bySido.putIfAbsent(r.sido, () => {}).add(kRegionCategory[r.code]!);
+        bySido.putIfAbsent(r.sido, () => {}).add(kRegionCategory[r.scratchUnitId]!);
         count[r.sido] = (count[r.sido] ?? 0) + 1;
       }
       for (final e in bySido.entries) {
@@ -221,7 +221,7 @@ double _unsharedRatio(MapData data, Region region) {
       for (var a = -1; a <= 1 && !near; a++) {
         for (var b = -1; b <= 1 && !near; b++) {
           for (final p in _grid![(gx + a) * 100000 + (gy + b)] ?? const []) {
-            if (p.$3 == region.code) continue;
+            if (p.$3 == region.scratchUnitId) continue;
             final dx = p.$1 - x, dy = p.$2 - y;
             if (dx * dx + dy * dy < eps2) {
               near = true;
@@ -245,7 +245,7 @@ Map<int, List<(double, double, String)>> _buildGrid(MapData data, double cell) {
       for (var i = 0; i < ring.length; i += 2) {
         final x = ring[i], y = ring[i + 1];
         final key = (x / cell).floor() * 100000 + (y / cell).floor();
-        g.putIfAbsent(key, () => []).add((x, y, r.code));
+        g.putIfAbsent(key, () => []).add((x, y, r.scratchUnitId));
       }
     }
   }

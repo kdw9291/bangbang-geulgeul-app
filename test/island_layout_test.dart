@@ -88,13 +88,13 @@ void main() {
       // 옹진군 0.93% · 신안군 5.44% · 안산시단원구 8.31% · 여수시 9.11%
       final hits = <String>[];
       for (final r in data.regions) {
-        if (needsPacking(r.rings, r.bounds)) hits.add(r.code);
+        if (needsPacking(r.rings, r.bounds)) hits.add(r.scratchUnitId);
       }
       expect(hits.toSet(), {'28720', '12870', '41273', '12130'});
     });
 
     test('옹진군 재배치가 육지 밀도를 40% 이상으로 올린다', () {
-      final r = data.regions.firstWhere((x) => x.code == '28720');
+      final r = data.regions.firstWhere((x) => x.scratchUnitId == '28720');
       final layout = packIslands(r.rings);
       debugPrint('옹진군 육지비율 0.93% → '
           '${(layout.fillRatio * 100).toStringAsFixed(1)}%');
@@ -104,7 +104,7 @@ void main() {
 
     test('신안군 링 42개가 모두 배치된다', () {
       // 하나라도 빠지면 그 섬은 긁을 수 없게 되고 65% 에 도달하지 못할 수 있다.
-      final r = data.regions.firstWhere((x) => x.code == '12870');
+      final r = data.regions.firstWhere((x) => x.scratchUnitId == '12870');
       final layout = packIslands(r.rings);
       expect(layout.placements.length, r.rings.length);
     });

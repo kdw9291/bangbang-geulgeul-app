@@ -115,7 +115,7 @@ void main() {
     // ---- 파일럿 10개 지역: 채택 배치(B) ----
     var i = 0;
     for (final entry in pilot.entries) {
-      final region = data.regions.firstWhere((r) => r.code == entry.key);
+      final region = data.regions.firstWhere((r) => r.scratchUnitId == entry.key);
       final ox = (i % regionCols) * cell;
       final oy = (rowBase + i ~/ regionCols) * (cell + label);
       i++;
@@ -138,7 +138,7 @@ void main() {
 
       canvas.drawPath(path, Paint()..color = kSidoColors[region.sido]);
 
-      final art = artForRegion(region.code);
+      final art = artForRegion(region.scratchUnitId);
       if (art != null) {
         // 다도해는 아트를 가장 큰 섬 하나에만 놓는다.
         final clip = layout == null

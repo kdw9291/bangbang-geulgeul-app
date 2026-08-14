@@ -17,12 +17,12 @@ void main() {
     // 시도 인덱스가 색 배열 범위를 벗어나면 렌더에서 터진다
     for (final r in data.regions) {
       expect(r.sido, inInclusiveRange(0, kSidoColors.length - 1));
-      expect(r.code.length, 5);
+      expect(r.scratchUnitId.length, 5);
       expect(r.bounds.isEmpty, isFalse);
     }
 
     // 코드는 유일해야 한다 — 긁은 상태를 코드로 저장하기 때문
-    expect(data.regions.map((r) => r.code).toSet().length, 231);
+    expect(data.regions.map((r) => r.scratchUnitId).toSet().length, 231);
   });
 
   test('지도 비율이 실제 국토에 가깝다', () async {

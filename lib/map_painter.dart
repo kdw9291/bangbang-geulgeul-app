@@ -85,7 +85,7 @@ void _paintMap(
     ..color = Colors.white.withValues(alpha: 0.55);
 
   for (final r in data.regions) {
-    final done = scratched.contains(r.code);
+    final done = scratched.contains(r.scratchUnitId);
     fill.color = done ? kSidoColors[r.sido] : foil;
     canvas.drawPath(r.path, fill);
     if (stroke) canvas.drawPath(r.path, hair);
@@ -97,12 +97,12 @@ void _paintMap(
     // 그려도 보이지 않고 래스터 비용만 늘어난다 (T3 실측: 최소 부산 중구
     // 3.0km² vs 최대 홍천군 1,807.5km², 611배).
     if (done && r.bounds.shortestSide >= kMapArtMinSide) {
-      final art = artForRegion(r.code);
+      final art = artForRegion(r.scratchUnitId);
       if (art != null) {
         canvas.save();
         canvas.clipPath(r.path);
         paintRegionArt(canvas, art, artTargetFill(r.path, r.bounds),
-            opacity: kMapArtOpacity, variant: artVariantFor(r.code));
+            opacity: kMapArtOpacity, variant: artVariantFor(r.scratchUnitId));
         canvas.restore();
       }
     }
@@ -235,7 +235,7 @@ class KoreaMapPainter extends CustomPainter {
       old.showSidoLines != showSidoLines ||
       old.seaColor != seaColor ||
       old.foilColor != foilColor ||
-      old.selected?.code != selected?.code ||
+      old.selected?.scratchUnitId != selected?.scratchUnitId ||
       // 내용으로 비교해야 한다. 길이 비교는 두 가지로 실패한다 —
       // 길이가 같고 내용만 다른 경우를 놓치고, 호출부가 같은 Set 인스턴스를
       // 제자리에서 수정하면 old 와 new 가 같은 객체라 길이마저 항상 같다.

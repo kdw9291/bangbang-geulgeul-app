@@ -134,7 +134,7 @@ class _ScratchPageState extends State<ScratchPage>
     // **가장 큰 섬 하나에만** 놓는다 (`design/art-island-repack.png`).
     Rect? artTarget;
     Path? artClip;
-    if (artForRegion(region.code) != null) {
+    if (artForRegion(region.scratchUnitId) != null) {
       if (layout != null) {
         artClip = buildLargestIslandPath(layout).transform(m.storage);
         artTarget = artTargetFill(artClip, artClip.getBounds());
@@ -190,7 +190,7 @@ class _ScratchPageState extends State<ScratchPage>
     _done = true;
     _fade.forward();
     final avg = _panEvents == 0 ? 0 : _panMicros ~/ _panEvents;
-    debugPrint('[SCRATCH] 완료 ${widget.region.code} ${widget.region.name} '
+    debugPrint('[SCRATCH] 완료 ${widget.region.scratchUnitId} ${widget.region.name} '
         'ratio=${(_ratio * 100).toStringAsFixed(0)}% '
         'pan=$_panEvents회 handler=${avg}us '
         'fps=${_stats.measuredFps.toStringAsFixed(1)} '
@@ -271,10 +271,10 @@ class _ScratchPageState extends State<ScratchPage>
                           baseColor: color,
                           strokes: _strokes,
                           foilOpacity: 1 - _fade.value,
-                          art: artForRegion(widget.region.code),
+                          art: artForRegion(widget.region.scratchUnitId),
                           artTarget: _artTarget,
                           artClip: _artClip,
-                          artVariant: artVariantFor(widget.region.code),
+                          artVariant: artVariantFor(widget.region.scratchUnitId),
                           artCache: _artCache,
                         ),
                       ),

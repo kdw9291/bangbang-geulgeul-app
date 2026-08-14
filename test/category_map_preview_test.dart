@@ -47,7 +47,7 @@ void main() {
     canvas.scale(k);
     final counts = <ArtCategory, int>{};
     for (final r in data.regions) {
-      final cat = kRegionCategory[r.code]!;
+      final cat = kRegionCategory[r.scratchUnitId]!;
       counts[cat] = (counts[cat] ?? 0) + 1;
       canvas.drawPath(r.path, Paint()..color = colors[cat]!);
       canvas.drawPath(

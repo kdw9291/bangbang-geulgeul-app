@@ -35,7 +35,7 @@ void main() {
     final painter = KoreaMapPainter(
       data: data,
       // 전부 수집한 상태로 그린다. 아트는 수집한 지역에만 나온다.
-      scratched: data.regions.map((r) => r.code).toSet(),
+      scratched: data.regions.map((r) => r.scratchUnitId).toSet(),
       showSidoLines: true,
       seaColor: const Color(0xFF15141B),
       foilColor: const Color(0xFF3B3944),
@@ -61,7 +61,7 @@ void main() {
     // 정밀 측정이 아니라 회귀 감지용이다. 이 프로젝트는 같은 코드가 머신 부하에
     // 따라 10배 튀는 것을 이미 겪었으므로 임계값을 넉넉히 둔다.
     final data = await MapData.load();
-    final all = data.regions.map((r) => r.code).toSet();
+    final all = data.regions.map((r) => r.scratchUnitId).toSet();
 
     double record(Set<String> scratched) {
       final sw = Stopwatch()..start();

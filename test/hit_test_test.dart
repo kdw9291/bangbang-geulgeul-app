@@ -33,7 +33,7 @@ void main() {
   test('모든 시군구에서 내부 점을 찾을 수 있다', () {
     final missing = data.regions
         .where((r) => interiorPoint(r) == null)
-        .map((r) => '${r.name}(${r.code})')
+        .map((r) => '${r.name}(${r.scratchUnitId})')
         .toList();
     expect(missing, isEmpty,
         reason: '내부 점을 못 찾은 지역은 폴리곤이 깨졌을 수 있다: $missing');
@@ -45,8 +45,8 @@ void main() {
       final p = interiorPoint(r);
       if (p == null) continue;
       final hit = tester.exact(p);
-      if (hit?.code != r.code) {
-        wrong.add('${r.name}(${r.code}) -> ${hit?.name ?? "없음"}');
+      if (hit?.scratchUnitId != r.scratchUnitId) {
+        wrong.add('${r.name}(${r.scratchUnitId}) -> ${hit?.name ?? "없음"}');
       }
     }
     expect(wrong, isEmpty, reason: '오판정 ${wrong.length}건: $wrong');
@@ -99,7 +99,7 @@ void main() {
     // 먼 곳은 거리도 크고 판정도 안 돼야 한다
     final away = Offset(center.dx + 200, center.dy + 200);
     expect(r.distanceTo(away), greaterThan(100));
-    expect(tester.nearest(away, tolerance: 4.0)?.code, isNot(r.code));
+    expect(tester.nearest(away, tolerance: 4.0)?.scratchUnitId, isNot(r.scratchUnitId));
   });
 
   test('허용 오차를 0 이하로 주면 정확 판정만 남는다', () {
@@ -109,7 +109,7 @@ void main() {
     final r = data.regions.first;
     final inside = interiorPoint(r);
     expect(inside, isNotNull);
-    expect(tester.nearest(inside!, tolerance: 0)?.code, r.code);
+    expect(tester.nearest(inside!, tolerance: 0)?.scratchUnitId, r.scratchUnitId);
   });
 
   // Codex 재검토 Low 회귀 방지.

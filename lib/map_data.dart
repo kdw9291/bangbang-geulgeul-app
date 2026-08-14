@@ -30,7 +30,7 @@ const List<Color> kSidoColors = [
 
 class Region {
   Region({
-    required this.code,
+    required this.scratchUnitId,
     required this.name,
     required this.sido,
     required this.path,
@@ -38,7 +38,16 @@ class Region {
     required this.rings,
   });
 
-  final String code; // 통계청 시군구 코드 5자리
+  /// 긁기 단위 하나를 가리키는 앱 도메인 식별자. **불투명한 ID 로 다룬다.**
+  ///
+  /// 대부분은 통계청 시군구 코드 5자리(`sgg`)와 같지만 **전부는 아니다.**
+  /// 2026-08-14 통합으로 서울은 `11000`, 제주는 `50000` 이라는 합성 ID 를 쓴다
+  /// (시도 2자리 + `000`). 이 둘은 통계청 코드가 아니므로 `sgg` 라고 부르지 않는다.
+  ///
+  /// 값의 구조를 해석해 의미를 끌어내지 않는다. 통합 단위인지 알아야 하는
+  /// 코드가 생기면 그때 명시적인 구분을 도입한다 — `000` 접미사 추론은 쓰지 않는다.
+  /// 병합 명세는 `design/tools/merge_spec.py`.
+  final String scratchUnitId;
   final String name;
   final int sido; // kSidoColors 인덱스
   final Path path;
@@ -153,7 +162,7 @@ class MapData {
         rings.add(buf);
       }
       regions.add(Region(
-        code: m['c'] as String,
+        scratchUnitId: m['c'] as String,
         name: m['n'] as String,
         sido: m['s'] as int,
         path: path,

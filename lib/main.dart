@@ -54,6 +54,8 @@ class _MapSpikePageState extends State<MapSpikePage>
   /// 한 번도 실행되지 않는 상태였다.
   RenderConfig _config = RenderConfig.adopted;
 
+  /// 긁기를 완료한 지역의 `Region.scratchUnitId` 집합.
+  ///
   /// **제자리에서 수정하지 않는다.** painter 가 이 Set 을 그대로 들고 있어서,
   /// `add`/`clear` 로 고치면 이전 painter 와 새 painter 가 같은 객체를 보게 되고
   /// `shouldRepaint` 가 변경을 감지하지 못한다. 항상 새 스냅샷으로 교체한다.
@@ -182,7 +184,7 @@ class _MapSpikePageState extends State<MapSpikePage>
     debugPrint('[HIT] 화면(${local.dx.toStringAsFixed(0)},'
         '${local.dy.toStringAsFixed(0)}) → '
         '지도(${mapPoint.dx.toStringAsFixed(1)},${mapPoint.dy.toStringAsFixed(1)}) '
-        '= ${hit == null ? "바다" : "${d.sidoNames[hit.sido]} ${hit.name}(${hit.code})"} '
+        '= ${hit == null ? "바다" : "${d.sidoNames[hit.sido]} ${hit.name}(${hit.scratchUnitId})"} '
         '· 허용 ${tol.toStringAsFixed(1)}km · ${sw.elapsedMicroseconds}us');
 
     setState(() => _selected = hit);
@@ -200,7 +202,7 @@ class _MapSpikePageState extends State<MapSpikePage>
       builder: (ctx) => _RegionSheet(
         region: r,
         sidoName: d.sidoNames[r.sido],
-        scratched: _scratched.contains(r.code),
+        scratched: _scratched.contains(r.scratchUnitId),
       ),
     );
     if (go != true || !mounted) return;
@@ -210,8 +212,8 @@ class _MapSpikePageState extends State<MapSpikePage>
       ),
     );
     if (done == true && mounted) {
-      setState(() => _scratched = {..._scratched, r.code});
-      debugPrint('[SCRATCH] 지도 반영 ${r.code} · '
+      setState(() => _scratched = {..._scratched, r.scratchUnitId});
+      debugPrint('[SCRATCH] 지도 반영 ${r.scratchUnitId} · '
           '수집 ${_scratched.length}/${_data!.regions.length}');
     }
   }
@@ -282,7 +284,7 @@ class _MapSpikePageState extends State<MapSpikePage>
                         },
                         onFillDemo: () => setState(() {
                           _scratched = _scratched.isEmpty
-                              ? d.regions.take(60).map((r) => r.code).toSet()
+                              ? d.regions.take(60).map((r) => r.scratchUnitId).toSet()
                               : const <String>{};
                         }),
                       ),
@@ -450,7 +452,7 @@ class _RegionArtCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final art = artForRegion(region.code);
+    final art = artForRegion(region.scratchUnitId);
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
       child: SizedBox(
@@ -461,7 +463,7 @@ class _RegionArtCard extends StatelessWidget {
             art: art,
             color: color,
             revealed: revealed,
-            variant: artVariantFor(region.code),
+            variant: artVariantFor(region.scratchUnitId),
           ),
           child: revealed || art == null
               ? null
@@ -534,7 +536,7 @@ class _ArtCardPainter extends CustomPainter {
 }
 
 /// 팝업 문구에 쓸 아트 이름. 랜드마크면 소재 이름, 카테고리면 `null`.
-String? _artName(Region region) => kLandmarkArt[region.code]?.name;
+String? _artName(Region region) => kLandmarkArt[region.scratchUnitId]?.name;
 
 class _StatsBar extends StatelessWidget {
   const _StatsBar({required this.stats, required this.data, this.selected});

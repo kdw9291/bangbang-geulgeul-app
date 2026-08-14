@@ -30,18 +30,18 @@ void main() {
 
   test('긁은 지역이 늘면 다시 그린다', () {
     final a = painter(const <String>{});
-    final b = painter({data.regions.first.code});
+    final b = painter({data.regions.first.scratchUnitId});
     expect(b.shouldRepaint(a), isTrue);
   });
 
   test('개수가 같아도 내용이 다르면 다시 그린다', () {
-    final a = painter({data.regions[0].code});
-    final b = painter({data.regions[1].code});
+    final a = painter({data.regions[0].scratchUnitId});
+    final b = painter({data.regions[1].scratchUnitId});
     expect(b.shouldRepaint(a), isTrue);
   });
 
   test('내용이 같으면 다시 그리지 않는다', () {
-    final codes = {data.regions[0].code, data.regions[5].code};
+    final codes = {data.regions[0].scratchUnitId, data.regions[5].scratchUnitId};
     final a = painter({...codes});
     final b = painter({...codes});
     expect(b.shouldRepaint(a), isFalse);
@@ -104,12 +104,12 @@ void main() {
         data, const <String>{}, true, false, const Color(0xFF474553));
     expect(identical(first, same), isTrue, reason: '같은 상태면 재사용해야 한다');
 
-    final changed = cache.obtain(data, {data.regions.first.code}, true, false,
+    final changed = cache.obtain(data, {data.regions.first.scratchUnitId}, true, false,
         const Color(0xFF474553));
     expect(identical(first, changed), isFalse, reason: '내용이 바뀌면 새로 기록해야 한다');
 
     // 개수가 같고 내용만 다른 경우도 구분해야 한다
-    final other = cache.obtain(data, {data.regions[1].code}, true, false,
+    final other = cache.obtain(data, {data.regions[1].scratchUnitId}, true, false,
         const Color(0xFF474553));
     expect(identical(changed, other), isFalse);
 
