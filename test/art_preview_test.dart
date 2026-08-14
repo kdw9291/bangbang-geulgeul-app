@@ -29,14 +29,9 @@ void main() {
     // 아트의 가운데 세로 띠만 보인다. 가로로 가장 긴 곳은 부안군 2.56:1 이다.
     // 랜드마크 6종과 카테고리 8종을 나눠서 본다.
     // 카테고리는 206개 이상이 재사용하므로 서로 구분되는지가 특히 중요하다.
-    final landmarks = <String, RegionArt>{
-      '남산타워': kLandmarkArt['11000']!,
-      '첨성대': kLandmarkArt['47130']!,
-      '팔달문': kLandmarkArt['41115']!,
-      '하회마을': kLandmarkArt['47170']!,
-      '돌하르방': kLandmarkArt['50000']!,
-      '순천만': kLandmarkArt['12150']!,
-      '울릉도': kLandmarkArt['47940']!,
+    // 제작된 랜드마크 전부. 새로 만들 때마다 자동으로 들어온다.
+    final landmarks = {
+      for (final e in kLandmarkArt.entries) e.value.name: e.value,
     };
     final categories = {
       for (final c in ArtCategory.values) c.name: kCategoryArt[c]!,

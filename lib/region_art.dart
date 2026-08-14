@@ -684,6 +684,121 @@ final Map<String, RegionArt> kLandmarkArt = {
     ArtShape('M40 72 h20'),
   ]),
 
+  // 28710 강화군 — 강화 고인돌 (세계유산, 청동기)
+  //
+  // 장면 구성: 낮은 언덕과 억새(배경) 위 탁자식 고인돌(핵심).
+  '28710': const RegionArt('강화 고인돌', [
+    ArtShape('M-25 76 C0 70 20 72 40 68 C60 64 80 70 125 66 L125 96 L-25 96 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-16 68 C-18 60 -14 54 -16 48 M8 66 C6 58 10 52 8 46 '
+        'M92 68 C90 60 94 54 92 48 M114 66 C112 58 116 52 114 46',
+        stroke: _a2, strokeWidth: 3, layer: ArtLayer.background),
+    ArtShape('M30 48 L70 44 L68 54 L32 58 Z', fill: _p),
+    ArtShape('M38 58 h8 v12 h-8 Z', fill: _p),
+    ArtShape('M56 56 h8 v14 h-8 Z', fill: _p),
+    ArtShape('M32 70 h36'),
+  ]),
+
+  // 28720 옹진군 — 백령도 두무진 (자연경관)
+  //
+  // 장면 구성: 바다 물결과 갈매기(배경) 앞에 기암 절벽 세 기둥(핵심).
+  // 옹진군은 다도해라 긁기 화면에서 가장 큰 섬에만 아트가 놓인다.
+  '28720': const RegionArt('백령도 두무진', [
+    ArtShape('M10 22 C13 18 17 18 20 22 M78 26 C81 22 85 22 88 26',
+        strokeWidth: 3, layer: ArtLayer.background),
+    ArtShape('M-25 78 C-5 72 10 84 30 78 C50 72 65 84 85 78 C100 74 112 80 125 76',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 90 C-5 84 10 96 30 90 C50 84 65 96 85 90 C100 86 112 92 125 88',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M36 70 L40 40 L44 70 Z', fill: _p),
+    ArtShape('M48 70 L52 32 L57 70 Z', fill: _p),
+    ArtShape('M60 70 L64 46 L69 70 Z', fill: _p),
+    ArtShape('M32 70 h40', stroke: _a2),
+  ]),
+
+  // 28245 계양구 — 계양산 (자연경관)
+  //
+  // 장면 구성: 도시 스카이라인(배경) 뒤로 솟은 산(핵심).
+  // 도시 한가운데 있는 산이라는 성격을 배경으로 드러낸다.
+  '28245': const RegionArt('계양산', [
+    ArtShape(
+        'M-25 84 L-25 74 L-13 74 L-13 68 L-1 68 L-1 78 L11 78 L11 70 L23 70 '
+        'L23 80 L35 80 L35 72 L47 72 L47 78 L59 78 L59 70 L71 70 L71 80 '
+        'L83 80 L83 72 L95 72 L95 78 L107 78 L107 70 L125 70 L125 84 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-25 84 H125', layer: ArtLayer.background),
+    ArtShape('M28 70 L42 36 L52 52 L60 42 L72 70 Z', fill: _p),
+    ArtShape('M36 52 L42 36 L47 47', stroke: _a2),
+  ]),
+
+  // 41670 여주시 — 세종대왕릉(영릉) (조선왕릉, 세계유산)
+  //
+  // 장면 구성: 소나무 숲 띠(배경) 앞에 봉분과 석물(핵심).
+  '41670': const RegionArt('세종대왕릉', [
+    ArtShape(
+        'M-25 50 L-15 32 L-5 48 L5 34 L15 48 L25 33 L35 48 L45 34 L55 48 '
+        'L65 33 L75 48 L85 35 L95 48 L105 34 L115 48 L125 36 L125 56 L-25 56 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-25 88 H125', layer: ArtLayer.background),
+    ArtShape('M34 62 C34 45 66 45 66 62 Z', fill: _p),
+    ArtShape('M32 62 h36'),
+    ArtShape('M39 70 V63 h5 v7 Z', fill: _p),
+    ArtShape('M56 70 V63 h5 v7 Z', fill: _p),
+    ArtShape('M30 70 h40'),
+  ]),
+
+  // 41610 광주시 — 남한산성 (세계유산, 조선)
+  //
+  // 장면 구성: 능선을 따라 뻗는 성벽(배경) 가운데 성문(핵심).
+  // 팔달문과 달리 **산성**이라는 성격을 능선 배경으로 구분한다.
+  '41610': const RegionArt('남한산성', [
+    ArtShape(
+        'M-25 74 C-5 66 15 70 35 62 C50 56 62 58 75 64 C95 72 108 68 125 70 '
+        'L125 96 L-25 96 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-25 64 C-5 56 15 60 35 52 C50 46 62 48 75 54 C95 62 108 58 125 60',
+        stroke: _a2, strokeWidth: 4, layer: ArtLayer.background),
+    ArtShape('M34 70 V56 h32 v14 Z', fill: _p),
+    ArtShape('M36 56 v-5 h6 v5 M47 56 v-5 h6 v5 M58 56 v-5 h6 v5',
+        stroke: _a2, strokeWidth: 3),
+    ArtShape('M44 70 V63 C44 58 56 58 56 63 V70 Z', fill: _a),
+  ]),
+
+  // 41830 양평군 — 두물머리 (자연경관)
+  //
+  // 장면 구성: 두 물줄기가 만나는 흐름(배경) 앞에 느티나무(핵심).
+  // 남한강과 북한강이 합쳐지는 곳이라는 이름의 뜻을 배경이 보여준다.
+  '41830': const RegionArt('두물머리', [
+    ArtShape('M-25 36 C0 46 20 56 44 64', stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M125 36 C100 46 80 56 56 64', stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 80 C0 74 25 86 50 80 C75 74 100 84 125 78',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 92 C0 86 25 98 50 92 C75 86 100 96 125 90',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M50 70 V52'),
+    ArtShape.circle(50, 42, 14, fill: _a2),
+    ArtShape('M40 70 h20'),
+  ]),
+
+  // 41820 가평군 — 자라섬·북한강 (자연경관)
+  //
+  // 장면 구성: 강 물결과 먼 산(배경) 가운데 강섬(핵심).
+  // 바다 섬과 구분하려고 배경을 물결이 아니라 **강과 산**으로 둔다.
+  '41820': const RegionArt('자라섬·북한강', [
+    ArtShape('M-25 44 L-8 26 L8 42 L24 24 L40 44 L56 26 L72 44 L88 28 L104 42 '
+        'L125 30 L125 52 L-25 52 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-25 78 C0 72 25 84 50 78 C75 72 100 82 125 76',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 90 C0 84 25 96 50 90 C75 84 100 94 125 88',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M30 68 C34 58 42 54 50 54 C58 54 66 58 70 68 Z', fill: _p),
+    ArtShape('M42 54 V48'),
+    ArtShape('M36 48 L42 37 L48 48 Z', fill: _a2),
+    ArtShape('M59 54 V50'),
+    ArtShape('M54 50 L59 41 L64 50 Z', fill: _a2),
+  ]),
+
   // 47130 경주시 — 첨성대 (국보, 7세기)
   //
   // 장면 구성: 별이 흩뿌려진 밤하늘(배경) 위에 첨성대(핵심).

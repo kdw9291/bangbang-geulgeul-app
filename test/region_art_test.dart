@@ -116,8 +116,8 @@ void main() {
   });
 
   group('파일럿 아트 데이터', () {
-    test('랜드마크 7개 · 카테고리 8종이 모두 파싱된다', () {
-      expect(kLandmarkArt.length, 7);
+    test('랜드마크 14개 · 카테고리 8종이 모두 파싱된다', () {
+      expect(kLandmarkArt.length, 14);
       expect(kCategoryArt.length, ArtCategory.values.length);
 
       for (final art in [...kLandmarkArt.values, ...kCategoryArt.values]) {
@@ -207,6 +207,8 @@ void main() {
       // **예외를 추가하려면 provenance 에 위험과 결정 근거를 먼저 적는다.**
       const safe = {
         '첨성대', '수원화성 팔달문', '하회마을', '돌하르방', '순천만 갈대밭', '울릉도',
+        '강화 고인돌', '백령도 두무진', '계양산', '세종대왕릉', '남한산성',
+        '두물머리', '자라섬·북한강',
       };
       // ⚠ 현대 건축물 예외. 1971년 완공이라 보호기간 내이고 상표 문제도 있다.
       // 사용자가 위험을 알고 채택했다(2026-08-13). 인앱결제 추가 전 법률 검토 필요.
@@ -225,8 +227,12 @@ void main() {
     });
 
     test('랜드마크가 없으면 카테고리로 내려간다', () {
-      expect(artForRegion('28720')?.name, '섬'); // 옹진군
+      // 랜드마크가 제작되면 이 예시는 폴백이 아니게 되므로, 랜드마크 계획이
+      // 없는 지역을 고른다.
+      expect(artForRegion('12870')?.name, '섬'); // 신안군
       expect(artForRegion('26140')?.name, '바다·해변'); // 부산 서구
+      expect(kLandmarkArt.containsKey('12870'), isFalse);
+      expect(kLandmarkArt.containsKey('26140'), isFalse);
     });
 
     test('둘 다 없으면 null — 1층 단색 폴백', () {
