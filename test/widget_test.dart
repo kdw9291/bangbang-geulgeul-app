@@ -50,4 +50,24 @@ void main() {
       expect(find.textContaining('지역 231개'), findsOneWidget);
     });
   });
+
+  testWidgets('지도 밖 빈 공간이 보이지 않게 이동이 제한된다', (tester) async {
+    // boundaryMargin 이 넉넉하면 지도를 화면 밖으로 끌어낼 수 있고,
+    // minScale 이 1 미만이면 축소했을 때 지도가 화면보다 작아진다.
+    // 둘 다 배경만 남는 빈 공간을 만든다.
+    // 에셋 로딩은 실제 I/O 라 `runAsync` 로 감싸야 진행된다.
+    // `pumpAndSettle` 은 FrameStats 가 프레임마다 알리므로 정착하지 않는다.
+    await tester.runAsync(() async {
+      await tester.pumpWidget(const MapScratchApp());
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      await tester.pump();
+
+      final v =
+          tester.widget<InteractiveViewer>(find.byType(InteractiveViewer));
+      expect(v.minScale, 1.0, reason: '배율 1이 꽉 찬 상태다. 더 줄이면 빈 공간이 생긴다');
+      expect(v.boundaryMargin, EdgeInsets.zero,
+          reason: '여백을 주면 지도를 화면 밖으로 끌어낼 수 있다');
+      expect(v.maxScale, greaterThan(1.0));
+    });
+  });
 }

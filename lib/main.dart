@@ -359,11 +359,19 @@ class _MapSpikePageState extends State<MapSpikePage>
           child: map,
         );
         return Center(
+          // **지도 밖 빈 공간이 보이지 않게 이동·축소를 제한한다.**
+          //
+          // `boundaryMargin` 이 400 이면 사방 400px 까지 끌어낼 수 있어 지도가
+          // 화면 밖으로 밀려나고 배경만 남는다. `minScale` 이 1 미만이면 축소
+          // 했을 때 지도가 화면보다 작아져 같은 문제가 생긴다.
+          //
+          // `w` 는 화면에 맞춰 계산한 폭이므로 배율 1이 "꽉 찬 상태"다.
+          // 여기서 더 줄일 이유가 없다.
           child: InteractiveViewer(
             transformationController: _tc,
-            minScale: 0.7,
+            minScale: 1.0,
             maxScale: 16,
-            boundaryMargin: const EdgeInsets.all(400),
+            boundaryMargin: EdgeInsets.zero,
             child: SizedBox(width: w, height: w * aspect, child: map),
           ),
         );
