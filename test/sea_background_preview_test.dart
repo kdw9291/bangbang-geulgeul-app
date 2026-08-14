@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mapscratch/map_data.dart';
+import 'package:mapscratch/app_theme.dart';
 import 'package:mapscratch/map_painter.dart';
 import 'package:mapscratch/sea_background.dart';
 
@@ -73,6 +74,7 @@ void main() {
           showSidoLines: true,
           sea: p,
           seaCache: SeaBackgroundCache(),
+          theme: kThemeDark,
           foilColor: p.foil,
           config: RenderConfig.adopted,
           cache: MapPictureCache(),
@@ -116,12 +118,14 @@ void main() {
     // Picture 캐시 키에 해시를 썼다가 고친 것과 같은 유형이다.
     const a = SeaPalette(
       name: 'same-name',
+      brightness: Brightness.dark,
       base: Color(0xFF112233),
       foil: Color(0xFF445566),
       blobs: [SeaBlob(Offset(0.5, 0.5), 0.5, Color(0xFF778899))],
     );
     const b = SeaPalette(
       name: 'same-name', // 이름만 같고 색이 전부 다르다
+      brightness: Brightness.dark,
       base: Color(0xFFAABBCC),
       foil: Color(0xFFDDEEFF),
       blobs: [SeaBlob(Offset(0.2, 0.2), 0.3, Color(0xFF102030))],

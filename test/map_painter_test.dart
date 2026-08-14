@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mapscratch/map_data.dart';
+import 'package:mapscratch/app_theme.dart';
 import 'package:mapscratch/map_painter.dart';
 import 'package:mapscratch/sea_background.dart';
 
@@ -25,6 +26,7 @@ void main() {
         showSidoLines: true,
         sea: kSeaAdopted,
         seaCache: SeaBackgroundCache(),
+      theme: kThemeDark,
         foilColor: kSeaAdopted.foil,
         config: RenderConfig.adopted,
         cache: cache ?? MapPictureCache(),
@@ -40,12 +42,14 @@ void main() {
     // 이름과 foil 을 맞추고 base/blob 만 바꿔야 이 경로가 고립된다.
     const p1 = SeaPalette(
       name: 'fixture',
+      brightness: Brightness.dark,
       base: Color(0xFF102030),
       foil: Color(0xFF445566),
       blobs: [SeaBlob(Offset(0.5, 0.5), 0.5, Color(0xFF778899))],
     );
     const p2 = SeaPalette(
       name: 'fixture', // 이름 같음
+      brightness: Brightness.dark,
       base: Color(0xFFAABBCC), // base 와 blob 만 다르다
       foil: Color(0xFF445566), // foil 같음
       blobs: [SeaBlob(Offset(0.2, 0.2), 0.3, Color(0xFF334455))],
@@ -61,6 +65,7 @@ void main() {
           showSidoLines: true,
           sea: sea,
           seaCache: seaCache,
+          theme: kThemeDark,
           foilColor: p1.foil,
           config: RenderConfig.adopted,
           cache: cache,
@@ -70,6 +75,27 @@ void main() {
         reason: '팔레트 내용이 다르면 다시 그려야 한다');
     expect(make(p1).shouldRepaint(make(p1)), isFalse,
         reason: '같은 팔레트면 다시 그릴 이유가 없다');
+  });
+
+  test('선택 강조색이 바뀌면 다시 그린다', () {
+    // 테마를 바꿔도 선택 외곽선이 옛 색으로 남으면, 밝은 배경에서 선택한
+    // 지역이 보이지 않는다.
+    final base = <String>{};
+    final cache = MapPictureCache();
+    final seaCache = SeaBackgroundCache();
+    KoreaMapPainter make(AppTheme t) => KoreaMapPainter(
+          data: data,
+          scratched: base,
+          showSidoLines: true,
+          sea: kSeaAdopted,
+          seaCache: seaCache,
+          theme: t,
+          foilColor: kSeaAdopted.foil,
+          config: RenderConfig.adopted,
+          cache: cache,
+        );
+    expect(make(kThemeLight).shouldRepaint(make(kThemeDark)), isTrue);
+    expect(make(kThemeDark).shouldRepaint(make(kThemeDark)), isFalse);
   });
 
   test('긁은 지역이 늘면 다시 그린다', () {
@@ -100,6 +126,7 @@ void main() {
       showSidoLines: true,
       sea: kSeaAdopted,
       seaCache: SeaBackgroundCache(),
+      theme: kThemeDark,
       foilColor: kSeaAdopted.foil,
       config: RenderConfig.adopted,
       cache: MapPictureCache(),
@@ -124,6 +151,7 @@ void main() {
       showSidoLines: true,
       sea: kSeaAdopted,
       seaCache: SeaBackgroundCache(),
+      theme: kThemeDark,
       foilColor: kSeaAdopted.foil,
       config: const RenderConfig(RenderMode.picture, strokes: false),
       cache: MapPictureCache(),

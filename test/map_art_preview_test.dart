@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mapscratch/map_data.dart';
+import 'package:mapscratch/app_theme.dart';
 import 'package:mapscratch/map_painter.dart';
 import 'package:mapscratch/sea_background.dart';
 import 'package:mapscratch/region_art.dart';
@@ -40,6 +41,7 @@ void main() {
       showSidoLines: true,
       sea: kSeaAdopted,
       seaCache: SeaBackgroundCache(),
+      theme: kThemeDark,
       foilColor: kSeaAdopted.foil,
       config: RenderConfig.adopted,
       cache: MapPictureCache(),

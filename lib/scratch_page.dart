@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import 'app_theme.dart';
 import 'frame_stats.dart';
 import 'island_layout.dart';
 import 'map_data.dart';
@@ -203,8 +204,9 @@ class _ScratchPageState extends State<ScratchPage>
   @override
   Widget build(BuildContext context) {
     final color = kSidoColors[widget.region.sido];
+    final t = AppThemeScope.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF141319),
+      backgroundColor: t.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -227,8 +229,8 @@ class _ScratchPageState extends State<ScratchPage>
                     widget.sidoName == widget.region.name
                         ? widget.region.name
                         : '${widget.sidoName} ${widget.region.name}',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: t.onSurface,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -236,7 +238,7 @@ class _ScratchPageState extends State<ScratchPage>
                   const Spacer(),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(_done),
-                    icon: const Icon(Icons.close, color: Colors.white54),
+                    icon: Icon(Icons.close, color: t.onSurfaceFaint),
                   ),
                 ],
               ),
@@ -276,6 +278,9 @@ class _ScratchPageState extends State<ScratchPage>
                           artClip: _artClip,
                           artVariant: artVariantFor(widget.region.scratchUnitId),
                           artCache: _artCache,
+                          foilLight: t.foilLight,
+                          foilDark: t.foilDark,
+                          outline: t.onSurface,
                         ),
                       ),
                     ),
@@ -295,7 +300,7 @@ class _ScratchPageState extends State<ScratchPage>
                           child: LinearProgressIndicator(
                             value: _done ? 1 : _ratio,
                             minHeight: 8,
-                            backgroundColor: const Color(0xFF2A2833),
+                            backgroundColor: t.surfaceVariant,
                             valueColor: AlwaysStoppedAnimation(color),
                           ),
                         ),
@@ -303,8 +308,8 @@ class _ScratchPageState extends State<ScratchPage>
                       const SizedBox(width: 12),
                       Text(
                         _done ? '완료!' : '${(_ratio * 100).round()}%',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: t.onSurface,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -318,11 +323,11 @@ class _ScratchPageState extends State<ScratchPage>
                             onPressed: () => Navigator.of(context).pop(true),
                             child: const Text('지도로 돌아가기'),
                           )
-                        : const Text(
+                        : Text(
                             '손가락으로 문질러 긁어보세요',
                             textAlign: TextAlign.center,
-                            style:
-                                TextStyle(color: Colors.white38, fontSize: 13),
+                            style: TextStyle(
+                                color: t.onSurfaceFaint, fontSize: 13),
                           ),
                   ),
                 ],
@@ -346,7 +351,15 @@ class _ScratchPainter extends CustomPainter {
     required this.artClip,
     required this.artVariant,
     required this.artCache,
+    required this.foilLight,
+    required this.foilDark,
+    required this.outline,
   });
+
+  /// 은박 결과 지역 외곽선. `CustomPainter` 는 context 가 없어 받아 온다.
+  final Color foilLight;
+  final Color foilDark;
+  final Color outline;
 
   final Path path;
   final Color baseColor;
@@ -399,7 +412,7 @@ class _ScratchPainter extends CustomPainter {
           ..shader = ui.Gradient.linear(
             b.topLeft,
             b.bottomRight,
-            const [Color(0xFF5A5766), Color(0xFF3B3944), Color(0xFF5A5766)],
+            [foilLight, foilDark, foilLight],
             const [0, .5, 1],
           ),
       );
@@ -432,7 +445,7 @@ class _ScratchPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2
-        ..color = Colors.white.withValues(alpha: .35),
+        ..color = outline.withValues(alpha: .35),
     );
   }
 

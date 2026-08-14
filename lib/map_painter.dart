@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 
+import 'app_theme.dart';
 import 'map_data.dart';
 import 'region_art.dart';
 import 'sea_background.dart';
@@ -183,6 +184,7 @@ class KoreaMapPainter extends CustomPainter {
     required this.showSidoLines,
     required this.sea,
     required this.seaCache,
+    required this.theme,
     required this.foilColor,
     required this.config,
     required this.cache,
@@ -199,6 +201,9 @@ class KoreaMapPainter extends CustomPainter {
   /// 배경 Picture 캐시. 배경은 지도 캐시 밖이라 매 프레임 그려지므로,
   /// 셰이더를 프레임마다 만들지 않도록 크기별로 기록해 둔다.
   final SeaBackgroundCache seaCache;
+
+  /// 선택 강조색을 여기서 얻는다. 밝은 테마에서 노랑은 대비가 나오지 않는다.
+  final AppTheme theme;
 
   final Color foilColor;
   final RenderConfig config;
@@ -224,14 +229,16 @@ class KoreaMapPainter extends CustomPainter {
 
     final sel = selected;
     if (sel != null) {
+      // **두 겹으로 그린다.** 단일 색으로는 시도 16색과 바다 3종을 모두
+      // 커버할 수 없다 — 어떤 조합에서는 대비가 1.04:1 까지 떨어진다.
+      // 굵은 바깥선 위에 얇은 안쪽선을 겹치면 배경이 밝든 어둡든 하나는 보인다.
+      final outline = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeJoin = StrokeJoin.round;
       canvas.drawPath(
-        sel.path,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.0
-          ..strokeJoin = StrokeJoin.round
-          ..color = const Color(0xFFFFD43B),
-      );
+          sel.path, outline..strokeWidth = 4.0..color = theme.selectionOuter);
+      canvas.drawPath(
+          sel.path, outline..strokeWidth = 1.8..color = theme.selectionInner);
     }
 
     canvas.restore();
@@ -243,6 +250,8 @@ class KoreaMapPainter extends CustomPainter {
       old.config != config ||
       old.showSidoLines != showSidoLines ||
       old.sea != sea ||
+      old.theme.selectionOuter != theme.selectionOuter ||
+      old.theme.selectionInner != theme.selectionInner ||
       old.foilColor != foilColor ||
       old.selected?.scratchUnitId != selected?.scratchUnitId ||
       // 내용으로 비교해야 한다. 길이 비교는 두 가지로 실패한다 —

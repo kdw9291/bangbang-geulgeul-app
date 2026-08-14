@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
+import 'app_theme.dart';
 import 'frame_stats.dart';
 import 'hit_test.dart';
 import 'map_data.dart';
@@ -14,19 +15,40 @@ import 'sea_background.dart';
 
 void main() => runApp(const MapScratchApp());
 
-class MapScratchApp extends StatelessWidget {
+class MapScratchApp extends StatefulWidget {
   const MapScratchApp({super.key});
 
   @override
+  State<MapScratchApp> createState() => _MapScratchAppState();
+}
+
+class _MapScratchAppState extends State<MapScratchApp> {
+  /// 바다 팔레트를 앱 최상위에 둔다. 여기서 UI 테마가 함께 결정된다.
+  ///
+  /// `--dart-define=SEA=flat` 으로 단색과 교대 측정할 수 있다.
+  /// M12 설정 화면이 생기면 이 값을 사용자가 바꾼다.
+  final SeaPalette _sea = seaPaletteByName(
+      const String.fromEnvironment('SEA', defaultValue: 'cerulean'));
+
+  AppTheme get _theme => themeForSea(_sea.brightness);
+
+  @override
   Widget build(BuildContext context) {
+    final t = _theme;
     return MaterialApp(
       title: '방방긁긁',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFA8752A)),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFFA8752A),
+          brightness: t.brightness,
+        ),
         useMaterial3: true,
       ),
-      home: const MapSpikePage(),
+      // **`home` 이 아니라 `builder` 에서 감싼다.** 팝업은 `showModalBottomSheet`
+      // 로 Navigator 위에 뜨므로 페이지 아래에 둔 Scope 를 보지 못한다.
+      builder: (context, child) => AppThemeScope(theme: t, child: child!),
+      home: MapSpikePage(sea: _sea),
     );
   }
 }
@@ -34,7 +56,9 @@ class MapScratchApp extends StatelessWidget {
 /// T2 지도 렌더 스파이크.
 /// 목적은 두 가지다 — 231개 폴리곤이 렌더되는가, 확대·이동 중 60fps 가 유지되는가.
 class MapSpikePage extends StatefulWidget {
-  const MapSpikePage({super.key});
+  const MapSpikePage({super.key, required this.sea});
+
+  final SeaPalette sea;
 
   @override
   State<MapSpikePage> createState() => _MapSpikePageState();
@@ -65,10 +89,7 @@ class _MapSpikePageState extends State<MapSpikePage>
 
   /// 바다 배경. 은박 색도 여기서 따라온다 — 배경이 밝아지면 은박이 함께
   /// 조정되지 않으면 미수집 지역이 배경에 묻힌다.
-  /// `--dart-define=SEA=flat` 으로 단색 배경과 교대 실행해 비교할 수 있다.
-  /// 기본값은 채택안이다.
-  final SeaPalette _sea = seaPaletteByName(
-      const String.fromEnvironment('SEA', defaultValue: 'cerulean'));
+  SeaPalette get _sea => widget.sea;
   final _seaCache = SeaBackgroundCache();
 
   /// 애니메이션 틱 수. 프레임이 안 나올 때 "애니메이션이 멈춘 것"인지
@@ -204,7 +225,7 @@ class _MapSpikePageState extends State<MapSpikePage>
   Future<void> _openRegion(Region r, MapData d) async {
     final go = await showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: const Color(0xFF1D1C25),
+      backgroundColor: AppThemeScope.of(context).surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
@@ -253,15 +274,16 @@ class _MapSpikePageState extends State<MapSpikePage>
   @override
   Widget build(BuildContext context) {
     final d = _data;
+    final t = AppThemeScope.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFF141319),
+      backgroundColor: t.background,
       body: SafeArea(
         child: _error != null
             ? Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: Text('지도 데이터를 불러오지 못했습니다.\n$_error',
-                      style: const TextStyle(color: Colors.white70)),
+                      style: TextStyle(color: t.onSurfaceMuted)),
                 ),
               )
             : d == null
@@ -317,6 +339,7 @@ class _MapSpikePageState extends State<MapSpikePage>
             showSidoLines: _sidoLines,
             sea: _sea,
             seaCache: _seaCache,
+            theme: AppThemeScope.of(context),
             foilColor: _sea.foil,
             config: _config,
             cache: _cache,
@@ -365,6 +388,7 @@ class _RegionSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = kSidoColors[region.sido];
+    final t = AppThemeScope.of(context);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -377,7 +401,7 @@ class _RegionSheet extends StatelessWidget {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: t.onSurfaceGhost,
                   borderRadius: BorderRadius.circular(99),
                 ),
               ),
@@ -397,8 +421,8 @@ class _RegionSheet extends StatelessWidget {
                 Expanded(
                   child: Text(
                     region.name,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: t.onSurface,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
@@ -409,7 +433,7 @@ class _RegionSheet extends StatelessWidget {
                 if (sidoName != region.name)
                   Text(sidoName,
                       style:
-                          const TextStyle(color: Colors.white54, fontSize: 13)),
+                          TextStyle(color: t.onSurfaceFaint, fontSize: 13)),
               ],
             ),
             const SizedBox(height: 14),
@@ -422,8 +446,8 @@ class _RegionSheet extends StatelessWidget {
                       : '이미 수집한 지역이에요. ${_artName(region)}.'
                   : '복권처럼 긁어서 이 지역을 수집해 보세요. '
                       '무엇이 나올지는 긁어야 알 수 있어요.',
-              style: const TextStyle(
-                  color: Colors.white70, fontSize: 14, height: 1.5),
+              style: TextStyle(
+                  color: t.onSurfaceMuted, fontSize: 14, height: 1.5),
             ),
             const SizedBox(height: 18),
             SizedBox(
@@ -464,6 +488,7 @@ class _RegionArtCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final art = artForRegion(region.scratchUnitId);
+    final t = AppThemeScope.of(context);
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
       child: SizedBox(
@@ -475,14 +500,16 @@ class _RegionArtCard extends StatelessWidget {
             color: color,
             revealed: revealed,
             variant: artVariantFor(region.scratchUnitId),
+            foilLight: t.foilLight,
+            foilDark: t.foilDark,
           ),
           child: revealed || art == null
               ? null
-              : const Center(
+              : Center(
                   child: Text(
                     '?',
                     style: TextStyle(
-                      color: Colors.white24,
+                      color: t.onSurfaceFaint,
                       fontSize: 52,
                       fontWeight: FontWeight.bold,
                     ),
@@ -500,12 +527,18 @@ class _ArtCardPainter extends CustomPainter {
     required this.color,
     required this.revealed,
     required this.variant,
+    required this.foilLight,
+    required this.foilDark,
   });
 
   final RegionArt? art;
   final Color color;
   final bool revealed;
   final ArtVariant variant;
+
+  /// 은박 결. `CustomPainter` 는 context 가 없어 색을 받아 온다.
+  final Color foilLight;
+  final Color foilDark;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -518,7 +551,7 @@ class _ArtCardPainter extends CustomPainter {
           ..shader = ui.Gradient.linear(
             rect.topLeft,
             rect.bottomRight,
-            const [Color(0xFF5A5766), Color(0xFF3B3944), Color(0xFF5A5766)],
+            [foilLight, foilDark, foilLight],
             const [0, .5, 1],
           ),
       );
@@ -543,7 +576,9 @@ class _ArtCardPainter extends CustomPainter {
       old.revealed != revealed ||
       old.color != color ||
       !identical(old.art, art) ||
-      old.variant != variant;
+      old.variant != variant ||
+      old.foilLight != foilLight ||
+      old.foilDark != foilDark;
 }
 
 /// 팝업 문구에 쓸 아트 이름. 랜드마크면 소재 이름, 카테고리면 `null`.
@@ -562,13 +597,16 @@ class _StatsBar extends StatelessWidget {
       animation: stats,
       builder: (context, _) {
         final ok = stats.jankRatio < 0.05;
+        final t = AppThemeScope.of(context);
         return Container(
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          color: const Color(0xFF1D1C25),
+          color: t.surface,
           child: DefaultTextStyle(
-            style: const TextStyle(
-                fontSize: 12, color: Colors.white70, fontFamily: 'monospace'),
+            style: TextStyle(
+                fontSize: 12,
+                color: t.onSurfaceMuted,
+                fontFamily: 'monospace'),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -578,9 +616,7 @@ class _StatsBar extends StatelessWidget {
                         style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: ok
-                                ? const Color(0xFF69DB7C)
-                                : const Color(0xFFFF8787))),
+                            color: ok ? t.good : t.bad)),
                     const SizedBox(width: 8),
                     Text('여유 ${stats.headroomFps.toStringAsFixed(0)}'),
                     const SizedBox(width: 10),
@@ -625,7 +661,7 @@ class _Controls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF1D1C25),
+      color: AppThemeScope.of(context).surface,
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
       child: Wrap(
         spacing: 8,

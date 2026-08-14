@@ -47,9 +47,17 @@ class SeaPalette {
     required this.base,
     required this.blobs,
     required this.foil,
+    required this.brightness,
   });
 
   final String name;
+
+  /// 이 바다와 함께 쓸 앱 UI 톤.
+  ///
+  /// 바다만 밝히고 나머지를 어둡게 두면 팝업을 열 때마다 밝은 지도 위에 검은
+  /// 시트가 덮여 따로 논다. **바다를 고르면 UI 톤이 따라온다** — 설정 항목이
+  /// 하나로 유지되고 조합이 어긋날 수 없다.
+  final Brightness brightness;
 
   /// blob 이 닿지 않는 구석까지 채우는 바탕색.
   final Color base;
@@ -87,6 +95,7 @@ class SeaPalette {
 /// 사라져** 폐기했다.
 const kSeaCerulean = SeaPalette(
   name: 'cerulean',
+  brightness: Brightness.light,
   base: Color(0xFF7FC4DE),
   foil: Color(0xFF56657C),
   blobs: [
@@ -107,6 +116,7 @@ const kSeaCerulean = SeaPalette(
 /// 파란 계열을 피했으므로 파란 시도 색과도 경쟁하지 않는다.
 const kSeaSunset = SeaPalette(
   name: 'sunset',
+  brightness: Brightness.light,
   base: Color(0xFFFDEEE4),
   foil: Color(0xFF8A7382),
   blobs: [
@@ -125,6 +135,7 @@ const kSeaSunset = SeaPalette(
 /// 구분되지 않았다.
 const kSeaDeep = SeaPalette(
   name: 'deep',
+  brightness: Brightness.dark,
   base: Color(0xFF0C2A38),
   foil: Color(0xFF474553),
   blobs: [
@@ -145,6 +156,7 @@ const kSeaDeep = SeaPalette(
 /// 래스터 차이를 잘못된 원인에 귀속했다가 철회한 전례가 있다.
 const kSeaFlat = SeaPalette(
   name: 'flat',
+  brightness: Brightness.dark,
   base: Color(0xFF16303D), // 그라데이션 도입 전 단색
   foil: Color(0xFF474553),
   blobs: [],
@@ -169,8 +181,8 @@ SeaPalette seaPaletteByName(String name) => switch (name) {
 
 /// 기본값. **2026-08-14 사용자가 세룰리안을 골랐다.**
 ///
-/// 밝은 계열이므로 앱 전체 라이트 테마(M11)가 완성돼야 제 모습이 나온다.
-/// 그 전까지는 지도만 밝고 팝업·통계바는 어두운 상태가 남는다.
+/// 밝은 계열이라 [SeaPalette.brightness] 가 `light` 이고, 앱 UI 도 함께
+/// 라이트 테마로 간다 (`app_theme.dart`).
 const kSeaAdopted = kSeaCerulean;
 
 /// [palette] 를 [size] 에 그린다.
