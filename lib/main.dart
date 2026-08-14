@@ -391,8 +391,12 @@ class _RegionSheet extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text(sidoName,
-                    style: const TextStyle(color: Colors.white54, fontSize: 13)),
+                // 통합 긁기 단위는 지역명이 시도명과 같다. 둘 다 쓰면
+                // "서울특별시  서울특별시" 가 된다.
+                if (sidoName != region.name)
+                  Text(sidoName,
+                      style:
+                          const TextStyle(color: Colors.white54, fontSize: 13)),
               ],
             ),
             const SizedBox(height: 14),
