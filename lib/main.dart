@@ -65,7 +65,10 @@ class _MapSpikePageState extends State<MapSpikePage>
 
   /// 바다 배경. 은박 색도 여기서 따라온다 — 배경이 밝아지면 은박이 함께
   /// 조정되지 않으면 미수집 지역이 배경에 묻힌다.
-  final SeaPalette _sea = kSeaAdopted;
+  /// `--dart-define=SEA=flat` 으로 단색 배경과 교대 실행해 비교할 수 있다.
+  /// 기본값은 채택안이다.
+  final SeaPalette _sea = seaPaletteByName(
+      const String.fromEnvironment('SEA', defaultValue: 'cerulean'));
   final _seaCache = SeaBackgroundCache();
 
   /// 애니메이션 틱 수. 프레임이 안 나올 때 "애니메이션이 멈춘 것"인지

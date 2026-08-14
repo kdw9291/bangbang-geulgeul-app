@@ -167,5 +167,19 @@ void main() {
     }
     expect(kSeaPalettes.contains(kSeaAdopted), isTrue,
         reason: '채택안이 후보 목록에 있어야 미리보기에서 함께 검토된다');
+    expect(kSeaPalettes.contains(kSeaFlat), isFalse,
+        reason: '측정 전용 단색은 설정 화면에 노출하지 않는다');
+  });
+
+  test('이름으로 찾으면 항상 같은 상수를 돌려준다', () {
+    // 동등성이 identity 라, 매번 새 인스턴스를 만들면 캐시가 계속 miss 된다.
+    // 설정 화면이 저장된 선택을 되살릴 때 이 계약이 깨지면 배경이 매 프레임
+    // 다시 기록된다.
+    for (final p in [...kSeaPalettes, kSeaFlat]) {
+      expect(identical(seaPaletteByName(p.name), p), isTrue,
+          reason: '${p.name} 이 기존 상수가 아니다');
+    }
+    expect(identical(seaPaletteByName('없는이름'), kSeaCerulean), isTrue,
+        reason: '알 수 없는 이름은 기본값으로 떨어져야 한다');
   });
 }

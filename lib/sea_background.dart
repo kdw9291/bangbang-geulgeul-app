@@ -137,8 +137,35 @@ const kSeaDeep = SeaPalette(
   ],
 );
 
+/// **성능 비교 전용 — 설정 화면에 노출하지 않는다.**
+///
+/// blob 이 없어 `base` 만 칠하는 사실상 단색 배경이다. 그라데이션 도입 전과
+/// 후를 **같은 바이너리에서 변수 하나만 바꿔 교대 실행**해 비교하려고 둔다.
+/// 순차 실행 비교는 기기 온도와 실행 편차가 섞여 근거가 약하다 — 이 프로젝트는
+/// 래스터 차이를 잘못된 원인에 귀속했다가 철회한 전례가 있다.
+const kSeaFlat = SeaPalette(
+  name: 'flat',
+  base: Color(0xFF16303D), // 그라데이션 도입 전 단색
+  foil: Color(0xFF474553),
+  blobs: [],
+);
+
 /// 설정 화면에 보여줄 순서. 사용자가 여기서 고른다.
+///
+/// [kSeaFlat] 은 측정 전용이라 넣지 않는다.
 const kSeaPalettes = [kSeaCerulean, kSeaSunset, kSeaDeep];
+
+/// 이름으로 팔레트를 찾는다. 측정용 `--dart-define=SEA=flat` 과
+/// 나중에 설정 화면이 저장한 선택을 되살릴 때 쓴다.
+///
+/// **반드시 기존 상수를 돌려준다.** 매번 새 `SeaPalette` 를 만들면 동등성이
+/// identity 라 캐시가 계속 miss 된다.
+SeaPalette seaPaletteByName(String name) => switch (name) {
+      'flat' => kSeaFlat,
+      'sunset' => kSeaSunset,
+      'deep' => kSeaDeep,
+      _ => kSeaCerulean,
+    };
 
 /// 기본값. **2026-08-14 사용자가 세룰리안을 골랐다.**
 ///
