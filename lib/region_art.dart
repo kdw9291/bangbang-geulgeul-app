@@ -799,6 +799,349 @@ final Map<String, RegionArt> kLandmarkArt = {
     ArtShape('M54 50 L59 41 L64 50 Z', fill: _a2),
   ]),
 
+  // 51210 속초시 — 설악산 (국립공원, 자연경관)
+  //
+  // 장면 구성: 겹겹이 뻗은 능선(배경) 앞에 울산바위처럼 각진 암봉(핵심).
+  // '산' 카테고리와 달리 **바위 봉우리**로 설악을 구분한다.
+  '51210': const RegionArt('설악산', [
+    ArtShape(
+        'M-25 62 L-10 42 L4 60 L18 40 L34 60 L48 38 L62 60 L78 42 L92 60 '
+        'L108 40 L125 58 L125 76 L-25 76 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M28 70 L36 44 L42 52 L48 32 L56 50 L62 40 L72 70 Z', fill: _p),
+    ArtShape('M42 52 L48 32 L54 46', stroke: _a2),
+  ]),
+
+  // 51760 평창군 — 월정사 팔각구층석탑 (국보, 고려)
+  //
+  // 장면 구성: 전나무 숲길(배경) 가운데 구층석탑(핵심).
+  '51760': const RegionArt('월정사 구층석탑', [
+    ArtShape(
+        'M-25 52 L-16 28 L-7 52 L4 30 L15 52 L26 29 L37 52 L63 52 L74 29 '
+        'L85 52 L96 30 L107 52 L118 28 L125 44 L125 60 L-25 60 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-25 78 H125', layer: ArtLayer.background),
+    ArtShape('M42 70 h16 v-4 h-16 Z M43 66 h14 v-5 h-14 Z M44 61 h12 v-5 h-12 Z '
+        'M45 56 h10 v-5 h-10 Z M46 51 h8 v-5 h-8 Z M47 46 h6 v-5 h-6 Z',
+        fill: _p),
+    ArtShape('M50 41 V33'),
+    ArtShape.circle(50, 30, 3, fill: _a, stroke: null),
+    ArtShape('M38 70 h24'),
+  ]),
+
+  // 43720 보은군 — 법주사 팔상전 (국보, 조선)
+  //
+  // 장면 구성: 속리산 능선(배경) 앞에 오층 목탑(핵심).
+  // 층마다 처마가 뻗어 석탑(월정사)과 구분된다.
+  '43720': const RegionArt('법주사 팔상전', [
+    ArtShape('M-25 66 C-5 56 12 62 30 52 C45 44 58 46 72 54 C92 64 108 58 125 62 '
+        'L125 88 L-25 88 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M32 44 L50 34 L68 44 Z', fill: _p),
+    ArtShape('M34 54 L50 46 L66 54 Z', fill: _p),
+    ArtShape('M36 64 L50 57 L64 64 Z', fill: _p),
+    ArtShape('M44 70 V64 h12 v6', fill: _a),
+    ArtShape('M36 70 h28'),
+  ]),
+
+  // 43800 단양군 — 도담삼봉 (명승, 자연경관)
+  //
+  // 장면 구성: 남한강 물결(배경) 위에 솟은 세 봉우리(핵심).
+  // 가운데가 높고 좌우가 낮은 실제 형태를 따른다.
+  '43800': const RegionArt('도담삼봉', [
+    ArtShape('M-25 74 C0 68 25 80 50 74 C75 68 100 78 125 72',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 86 C0 80 25 92 50 86 C75 80 100 90 125 84',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 98 C0 92 25 104 50 98 C75 92 100 102 125 96',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M30 70 C32 58 36 52 39 52 C42 52 46 58 48 70 Z', fill: _p),
+    ArtShape('M42 70 C45 50 48 32 50 32 C52 32 55 50 58 70 Z', fill: _p),
+    ArtShape('M52 70 C54 58 58 54 61 54 C64 54 68 60 70 70 Z', fill: _p),
+  ]),
+
+  // 44760 부여군 — 정림사지 오층석탑 (국보, 백제)
+  //
+  // 장면 구성: 백마강 물굽이와 절터 기단(배경) 가운데 오층석탑(핵심).
+  // 백제 석탑은 지붕돌이 얇고 넓게 뻗는다 — 그 비례를 따른다.
+  '44760': const RegionArt('정림사지 오층석탑', [
+    ArtShape('M-25 80 C0 74 25 86 50 80 C75 74 100 84 125 78',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 66 H125', stroke: _a2, strokeWidth: 3,
+        layer: ArtLayer.background),
+    ArtShape('M-25 92 H125', layer: ArtLayer.background),
+    ArtShape('M36 70 h28 v-5 h-28 Z', fill: _p),
+    ArtShape('M37 65 h26 v-4 h-26 Z M40 61 h20 v-5 h-20 Z', fill: _p),
+    ArtShape('M39 56 h22 v-4 h-22 Z M42 52 h16 v-5 h-16 Z', fill: _p),
+    ArtShape('M41 47 h18 v-4 h-18 Z M44 43 h12 v-5 h-12 Z', fill: _p),
+    ArtShape('M50 38 V32'),
+  ]),
+
+  // 44150 공주시 — 공산성 (사적, 백제 왕도)
+  //
+  // 장면 구성: 금강 물줄기(배경) 위 언덕을 감싼 성벽과 누각(핵심).
+  '44150': const RegionArt('공산성', [
+    ArtShape('M-25 84 C0 78 25 90 50 84 C75 78 100 88 125 82',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 96 C0 90 25 102 50 96 C75 90 100 100 125 94',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 74 C-5 68 15 70 35 62 C50 56 62 58 75 64 C95 72 108 70 125 72 '
+        'L125 84 L-25 84 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M30 68 C34 56 66 56 70 68 Z', fill: _p),
+    ArtShape('M34 56 h32', strokeWidth: 4),
+    ArtShape('M38 48 L50 40 L62 48 Z', fill: _p),
+    ArtShape('M42 48 h16 v8 h-16 Z', fill: _p),
+    ArtShape('M48 56 V50 h4 v6', fill: _a),
+  ]),
+
+  // 30200 유성구 — 계룡산 (국립공원, 자연경관)
+  //
+  // 장면 구성: 닭 볏처럼 이어진 능선(배경·핵심).
+  // 이름 그대로 봉우리가 연달아 솟은 형태를 핵심에 둔다.
+  '30200': const RegionArt('계룡산', [
+    ArtShape('M-25 68 C-5 62 15 66 35 60 C50 55 62 57 75 62 C95 68 108 66 125 68 '
+        'L125 88 L-25 88 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M28 70 L34 52 L39 60 L45 40 L51 58 L57 44 L63 60 L72 70 Z',
+        fill: _p),
+    ArtShape('M39 60 L45 40 L50 52', stroke: _a2),
+  ]),
+
+  // 30110 동구(대전) — 대청호 (자연경관)
+  //
+  // 장면 구성: 호수를 둘러싼 산(배경) 가운데 물과 작은 섬(핵심).
+  // **댐 구조물은 그리지 않는다** — 현대 건축물이라 저작권 제약이 걸린다.
+  '30110': const RegionArt('대청호', [
+    ArtShape('M-25 46 L-8 30 L8 44 L26 28 L42 44 L58 30 L74 44 L92 28 L108 44 '
+        'L125 32 L125 54 L-25 54 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-25 80 C0 74 25 86 50 80 C75 74 100 84 125 78',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 92 C0 86 25 98 50 92 C75 86 100 96 125 90',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M32 66 C36 58 44 54 50 54 C56 54 64 58 68 66 Z', fill: _p),
+    ArtShape('M50 54 V46'),
+    ArtShape('M44 46 L50 34 L56 46 Z', fill: _a2),
+  ]),
+
+  // 36110 세종시 — 금강 굽이 (자연경관)
+  //
+  // 장면 구성: 강이 크게 휘도는 물굽이(핵심)와 양안 둔치(배경).
+  // 도시 아이콘과 겹치지 않도록 건물을 넣지 않는다.
+  '36110': const RegionArt('금강 굽이', [
+    ArtShape('M-25 36 C-5 30 12 34 30 30 C48 26 62 30 125 26',
+        stroke: _a2, strokeWidth: 3, layer: ArtLayer.background),
+    ArtShape('M-25 92 C0 86 25 98 50 92 C75 86 100 96 125 90',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M27 44 C40 52 40 62 27 70', strokeWidth: 6),
+    ArtShape('M73 44 C60 52 60 62 73 70', strokeWidth: 6),
+    ArtShape('M38 54 C46 60 54 60 62 54', stroke: _a2),
+    ArtShape('M38 64 C46 70 54 70 62 64', stroke: _a2),
+  ]),
+
+  // 52190 남원시 — 광한루 (보물, 조선)
+  //
+  // 장면 구성: 연못과 오작교(배경) 앞에 누각(핵심).
+  // 기둥 위에 올린 **누각**이라 지면에 붙은 한옥과 구분된다.
+  '52190': const RegionArt('광한루', [
+    ArtShape('M-25 84 C0 78 25 90 50 84 C75 78 100 88 125 82',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 78 C-12 70 -2 70 10 78 C22 70 32 70 44 78 C56 70 66 70 78 78 '
+        'C90 70 100 70 112 78 C118 74 122 73 125 74',
+        stroke: _a2, strokeWidth: 3, layer: ArtLayer.background),
+    ArtShape('M30 50 L50 38 L70 50 Z', fill: _p),
+    ArtShape('M28 50 H72'),
+    ArtShape('M34 50 h32 v10 h-32 Z', fill: _p),
+    ArtShape('M36 60 V70 M46 60 V70 M56 60 V70 M64 60 V70', strokeWidth: 4),
+    ArtShape('M30 70 h40'),
+  ]),
+
+  // 52800 부안군 — 채석강 (명승, 자연경관)
+  //
+  // 장면 구성: 바다 물결(배경) 앞에 책을 쌓은 듯한 층암 절벽(핵심).
+  // 가로 층리가 반복이라 잘려도 절벽으로 읽힌다.
+  '52800': const RegionArt('채석강', [
+    ArtShape('M-25 82 C-5 76 10 88 30 82 C50 76 65 88 85 82 C100 78 112 84 125 80',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 94 C-5 88 10 100 30 94 C50 88 65 100 85 94 C100 90 112 96 125 92',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M28 72 h44 V34 h-44 Z', fill: _p),
+    ArtShape('M28 42 h44 M28 50 h44 M28 58 h44 M28 65 h44',
+        stroke: _a2, strokeWidth: 3),
+  ]),
+
+  // 12210 동구(광주) — 무등산 (국립공원, 자연경관)
+  //
+  // 장면 구성: 도시 능선(배경) 위로 완만한 산과 주상절리 기둥(핵심).
+  // 입석대·서석대의 **돌기둥**이 다른 산과 구분되는 표지다.
+  '12210': const RegionArt('무등산', [
+    ArtShape('M-25 74 C-5 68 15 72 35 66 C50 62 62 64 75 68 C95 74 108 72 125 74 '
+        'L125 92 L-25 92 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M26 66 C34 46 66 46 74 66 Z', fill: _p),
+    ArtShape('M38 66 V50 h5 v16 M47 66 V46 h5 v20 M56 66 V50 h5 v16',
+        fill: _p),
+    ArtShape('M28 70 h44'),
+  ]),
+
+  // 27140 동구(대구) — 팔공산 갓바위 (보물, 통일신라)
+  //
+  // 장면 구성: 팔공산 능선(배경) 앞에 갓 쓴 좌불(핵심).
+  // 머리 위 **판석(갓)** 이 이름이자 표지다.
+  '27140': const RegionArt('팔공산 갓바위', [
+    ArtShape('M-25 70 C-5 62 15 66 35 58 C50 52 62 54 75 60 C95 68 108 66 125 68 '
+        'L125 90 L-25 90 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M34 34 h32 v5 h-32 Z', fill: _p),
+    ArtShape('M42 39 C42 30 58 30 58 39 Z', fill: _p),
+    ArtShape('M36 70 C36 50 44 42 50 42 C56 42 64 50 64 70 Z', fill: _p),
+    ArtShape('M44 52 h12', stroke: _a, strokeWidth: 3),
+    ArtShape('M32 70 h36'),
+  ]),
+
+  // 27710 달성군 — 비슬산 (자연경관)
+  //
+  // 장면 구성: 능선(배경) 앞 참꽃 군락과 암괴류(핵심).
+  // 봄 진달래로 알려진 산이라 붉은 점을 흩뿌려 다른 산과 구분한다.
+  '27710': const RegionArt('비슬산', [
+    ArtShape('M-25 72 C-5 64 15 68 35 60 C50 54 62 56 75 62 C95 70 108 68 125 70 '
+        'L125 92 L-25 92 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M26 70 L40 40 L50 54 L58 44 L72 70 Z', fill: _p),
+    ArtShape.circle(38, 60, 3.5, fill: _a, stroke: null),
+    ArtShape.circle(50, 64, 3.5, fill: _a, stroke: null),
+    ArtShape.circle(61, 60, 3.5, fill: _a, stroke: null),
+    ArtShape.circle(45, 50, 3, fill: _a, stroke: null),
+  ]),
+
+  // 48220 통영시 — 한려수도 (자연경관)
+  //
+  // 장면 구성: 겹겹이 늘어선 섬 실루엣(배경) 앞에 돛단배(핵심).
+  // 통영은 다도해라 긁기 화면에서 가장 큰 섬에만 아트가 놓인다.
+  '48220': const RegionArt('한려수도', [
+    ArtShape('M-25 58 C-12 46 2 46 14 58 C26 48 38 48 50 58 C62 48 74 48 86 58 '
+        'C98 48 110 48 125 58 L125 72 L-25 72 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-25 84 C0 78 25 90 50 84 C75 78 100 88 125 82',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M50 66 V30'),
+    ArtShape('M50 32 L68 58 H50 Z', fill: _p),
+    ArtShape('M50 38 L34 58 H50 Z', fill: _p),
+    ArtShape('M34 66 C38 72 62 72 66 66 Z', fill: _p),
+  ]),
+
+  // 48890 합천군 — 해인사 장경판전 (국보·세계유산, 조선)
+  //
+  // 장면 구성: 가야산 능선(배경) 앞에 살창이 늘어선 판전(핵심).
+  // **격자 살창**이 이 건물의 표지라 일반 한옥과 구분된다.
+  '48890': const RegionArt('해인사 장경판전', [
+    ArtShape('M-25 68 C-5 60 15 64 35 56 C50 50 62 52 75 58 C95 66 108 64 125 66 '
+        'L125 88 L-25 88 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M28 48 L50 38 L72 48 Z', fill: _p),
+    ArtShape('M32 48 h36 v22 h-36 Z', fill: _p),
+    ArtShape('M37 53 h6 v12 h-6 Z M47 53 h6 v12 h-6 Z M57 53 h6 v12 h-6 Z',
+        fill: _a2),
+    ArtShape('M28 70 h44'),
+  ]),
+
+  // 48170 진주시 — 진주성 촉석루 (문화재, 조선)
+  //
+  // 장면 구성: 남강 물줄기(배경) 위 절벽에 선 누각(핵심).
+  // 광한루와 달리 **성벽 위**에 있다는 점이 다르다.
+  '48170': const RegionArt('진주성 촉석루', [
+    ArtShape('M-25 86 C0 80 25 92 50 86 C75 80 100 90 125 84',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 96 C0 90 25 102 50 96 C75 90 100 100 125 94',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 80 H125', strokeWidth: 4, layer: ArtLayer.background),
+    ArtShape('M30 44 L50 32 L70 44 Z', fill: _p),
+    ArtShape('M28 44 H72'),
+    ArtShape('M34 44 h32 v10 h-32 Z', fill: _p),
+    ArtShape('M36 54 V64 M46 54 V64 M56 54 V64 M64 54 V64', strokeWidth: 4),
+    ArtShape('M30 64 h40 v8 h-40 Z', fill: _p),
+  ]),
+
+  // 26410 금정구 — 범어사 (조선 중건)
+  //
+  // 장면 구성: 금정산 능선(배경) 앞에 일주문(핵심).
+  // 기둥 하나 줄로 선 **일주문**이라 다른 사찰 건물과 구분된다.
+  '26410': const RegionArt('범어사', [
+    ArtShape('M-25 70 C-5 60 15 66 35 56 C50 48 62 50 75 58 C95 68 108 66 125 68 '
+        'L125 90 L-25 90 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M28 46 L50 34 L72 46 Z', fill: _p),
+    ArtShape('M26 46 H74'),
+    ArtShape('M32 50 L50 42 L68 50 Z', fill: _p),
+    ArtShape('M38 50 V70 M50 50 V70 M62 50 V70', strokeWidth: 5),
+    ArtShape('M30 70 h40'),
+  ]),
+
+  // 26350 해운대구 — 해운대 해변 (자연경관)
+  //
+  // 장면 구성: 파도와 해(배경) 앞에 파라솔(핵심).
+  // '바다·해변' 카테고리는 조개라 겹치지 않는다.
+  '26350': const RegionArt('해운대 해변', [
+    ArtShape.circle(90, 24, 10,
+        fill: _a, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-25 76 C-5 70 10 82 30 76 C50 70 65 82 85 76 C100 72 112 78 125 74',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 88 C-5 82 10 94 30 88 C50 82 65 94 85 88 C100 84 112 90 125 86',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 66 H125', stroke: _a2, strokeWidth: 3,
+        layer: ArtLayer.background),
+    ArtShape('M50 70 V44'),
+    ArtShape('M30 44 C34 32 66 32 70 44 Z', fill: _p),
+    ArtShape('M40 38 C42 34 58 34 60 38', stroke: _a, strokeWidth: 3),
+    ArtShape('M40 70 h20'),
+  ]),
+
+  // 26200 영도구 — 태종대 (명승, 자연경관)
+  //
+  // 장면 구성: 바다 물결(배경) 앞에 해식 절벽과 등대(핵심).
+  // 등대는 특정 건물이 아니라 **일반 형태**로 그린다.
+  '26200': const RegionArt('태종대', [
+    ArtShape('M-25 84 C-5 78 10 90 30 84 C50 78 65 90 85 84 C100 80 112 86 125 82',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 96 C-5 90 10 102 30 96 C50 90 65 102 85 96 C100 92 112 98 125 94',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M28 72 C32 60 40 56 50 56 C60 56 68 60 72 72 Z', fill: _p),
+    ArtShape('M44 56 V38 h12 v18 Z', fill: _p),
+    ArtShape('M42 38 h16 v-5 h-16 Z', fill: _p),
+    ArtShape('M46 44 h8', stroke: _a, strokeWidth: 3),
+  ]),
+
+  // 31710 울주군 — 반구대 암각화 (국보, 선사)
+  //
+  // 장면 구성: 절벽면(배경) 위에 새겨진 고래와 사람(핵심).
+  // 바위그림이라는 성격을 살려 **선각 실루엣**으로 그린다.
+  '31710': const RegionArt('반구대 암각화', [
+    ArtShape('M-25 22 H125 V78 H-25 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-25 84 C0 78 25 90 50 84 C75 78 100 88 125 82',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M30 52 C36 42 58 42 66 50 C70 54 70 58 66 60 C58 66 36 64 30 56 Z',
+        fill: _p),
+    ArtShape('M66 50 L72 44 L72 58 L66 60', fill: _p),
+    ArtShape.circle(40, 51, 2.5, fill: ArtPalette.ink, stroke: null),
+    ArtShape('M44 66 V72 M50 66 V72', strokeWidth: 3),
+  ]),
+
+  // 31170 동구(울산) — 대왕암 (자연경관)
+  //
+  // 장면 구성: 바다 물결(배경) 앞에 붉은 바위 무리와 다리(핵심).
+  '31170': const RegionArt('대왕암', [
+    ArtShape('M-25 82 C-5 76 10 88 30 82 C50 76 65 88 85 82 C100 78 112 84 125 80',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M-25 94 C-5 88 10 100 30 94 C50 88 65 100 85 94 C100 90 112 96 125 92',
+        stroke: _a2, layer: ArtLayer.background),
+    ArtShape('M28 72 L36 48 L44 72 Z', fill: _p),
+    ArtShape('M42 72 L52 38 L62 72 Z', fill: _p),
+    ArtShape('M58 72 L66 52 L74 72 Z', fill: _p),
+    ArtShape('M36 50 C44 42 56 40 64 52', stroke: _a, strokeWidth: 4),
+  ]),
+
   // 47130 경주시 — 첨성대 (국보, 7세기)
   //
   // 장면 구성: 별이 흩뿌려진 밤하늘(배경) 위에 첨성대(핵심).

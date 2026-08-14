@@ -134,6 +134,16 @@ void main() {
       expect(inside, greaterThan(30));
     });
 
+    test('제작된 랜드마크가 계획 목록과 정확히 일치한다', () {
+      // 계획에 없는 지역에 랜드마크를 만들면 분포 계산이 어긋나고,
+      // 계획에 있는데 안 만들면 그 지역은 카테고리로 폴백한다.
+      final made = kLandmarkArt.keys.toSet();
+      expect(made.difference(kPlannedLandmarks), isEmpty,
+          reason: '계획에 없는 랜드마크');
+      expect(kPlannedLandmarks.difference(made), isEmpty,
+          reason: '아직 만들지 않은 랜드마크');
+    });
+
     test('계획된 랜드마크 코드가 모두 지도에 있다', () {
       final mapCodes = data.regions.map((r) => r.code).toSet();
       expect(kPlannedLandmarks.difference(mapCodes), isEmpty);
