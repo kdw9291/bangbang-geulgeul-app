@@ -21,6 +21,7 @@ import 'package:mapscratch/region_art.dart';
 /// 산출물: `build/art_preview.png`
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  _popupGrid();
 
   test('장면 구성 아트와 파일럿 10개 지역을 PNG 로 그린다', () async {
     final data = await MapData.load();
@@ -36,7 +37,9 @@ void main() {
     final categories = {
       for (final c in ArtCategory.values) c.name: kCategoryArt[c]!,
     };
-    const crops = ['원본', '세로 1:3.7', '가로 2.6:1'];
+    // 팝업 카드는 가로로 길다(약 2.3:1). 실기기에서 이 비율에서만 드러난
+    // 문제가 있었다 — 금강이 X 자로 보이고 반구대 사람 다리가 고래에 붙어 보였다.
+    const crops = ['원본', '세로 1:3.7', '가로 2.6:1', '팝업 2.3:1'];
 
     const pilot = <String, String>{
       '47130': '경주시',
@@ -84,6 +87,8 @@ void main() {
               center: full.center, width: full.width * 0.27, height: full.height),
           '가로 2.6:1' => Rect.fromCenter(
               center: full.center, width: full.width, height: full.height * 0.39),
+          '팝업 2.3:1' => Rect.fromCenter(
+              center: full.center, width: full.width, height: full.height * 0.44),
           _ => full,
         };
 
@@ -164,6 +169,59 @@ void main() {
     out.writeAsBytesSync(bytes!.buffer.asUint8List());
     debugPrint('[ART] 미리보기 저장 ${out.path} (${w.toInt()}×${h.toInt()})');
 
+    expect(out.existsSync(), isTrue);
+  });
+}
+
+/// 랜드마크 전부를 **팝업 카드 비율**로만 격자에 그린다.
+///
+/// 원본·크롭까지 함께 그리면 가로가 8000px 을 넘어 읽을 수 없다.
+/// 실기기에서 문제가 드러난 비율이 팝업이라 이것만 따로 본다.
+/// 산출물: `build/popup_cards.png`
+void _popupGrid() {
+  test('랜드마크 전부를 팝업 카드 비율로 그린다', () async {
+    final arts = kLandmarkArt.entries.toList();
+    const cw = 420.0, ch = 182.0, gap = 10.0, label = 22.0;
+    const cols = 6;
+    final rows = (arts.length / cols).ceil();
+    final w = cols * (cw + gap) + gap;
+    final h = rows * (ch + label + gap) + gap;
+
+    final rec = ui.PictureRecorder();
+    final canvas = Canvas(rec);
+    canvas.drawRect(
+        Rect.fromLTWH(0, 0, w, h), Paint()..color = const Color(0xFF15141B));
+
+    for (var i = 0; i < arts.length; i++) {
+      final ox = gap + (i % cols) * (cw + gap);
+      final oy = gap + (i ~/ cols) * (ch + label + gap);
+      final box = Rect.fromLTWH(ox, oy, cw, ch);
+
+      canvas.drawRect(box, Paint()..color = const Color(0xFF4E8ED9));
+      canvas.save();
+      canvas.clipRect(box);
+      // 팝업과 같은 배치 — 긴 변에 맞춰 채우고 넘치는 부분을 잘라낸다.
+      final side = math.max(cw, ch);
+      paintRegionArt(canvas, arts[i].value,
+          Rect.fromCenter(center: box.center, width: side, height: side));
+      canvas.restore();
+
+      final tp = TextPainter(
+        text: TextSpan(
+          text: arts[i].key,
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, Offset(ox + 2, oy + ch + 3));
+    }
+
+    final img = await rec.endRecording().toImage(w.toInt(), h.toInt());
+    final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+    final out = File('build/popup_cards.png');
+    out.parent.createSync(recursive: true);
+    out.writeAsBytesSync(bytes!.buffer.asUint8List());
+    debugPrint('[ART] 팝업 카드 ${arts.length}개 → ${out.path}');
     expect(out.existsSync(), isTrue);
   });
 }

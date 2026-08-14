@@ -693,9 +693,9 @@ final Map<String, RegionArt> kLandmarkArt = {
     ArtShape('M-16 68 C-18 60 -14 54 -16 48 M8 66 C6 58 10 52 8 46 '
         'M92 68 C90 60 94 54 92 48 M114 66 C112 58 116 52 114 46',
         stroke: _a2, strokeWidth: 3, layer: ArtLayer.background),
-    ArtShape('M30 48 L70 44 L68 54 L32 58 Z', fill: _p),
-    ArtShape('M38 58 h8 v12 h-8 Z', fill: _p),
-    ArtShape('M56 56 h8 v14 h-8 Z', fill: _p),
+    ArtShape('M28 46 L72 42 L70 57 L30 61 Z', fill: _p),
+    ArtShape('M36 61 h10 v9 h-10 Z', fill: _p),
+    ArtShape('M55 59 h10 v11 h-10 Z', fill: _p),
     ArtShape('M32 70 h36'),
   ]),
 
@@ -710,9 +710,10 @@ final Map<String, RegionArt> kLandmarkArt = {
         stroke: _a2, layer: ArtLayer.background),
     ArtShape('M-25 90 C-5 84 10 96 30 90 C50 84 65 96 85 90 C100 86 112 92 125 88',
         stroke: _a2, layer: ArtLayer.background),
-    ArtShape('M36 70 L40 40 L44 70 Z', fill: _p),
-    ArtShape('M48 70 L52 32 L57 70 Z', fill: _p),
-    ArtShape('M60 70 L64 46 L69 70 Z', fill: _p),
+    // 뾰족한 삼각형은 획이 내부를 먹는다. 윗면을 평평하게 잘라 폭을 준다.
+    ArtShape('M28 70 L33 44 L39 44 L44 70 Z', fill: _p),
+    ArtShape('M42 70 L47 34 L53 34 L58 70 Z', fill: _p),
+    ArtShape('M56 70 L60 48 L66 48 L71 70 Z', fill: _p),
     ArtShape('M32 70 h40', stroke: _a2),
   ]),
 
@@ -821,12 +822,15 @@ final Map<String, RegionArt> kLandmarkArt = {
         'L85 52 L96 30 L107 52 L118 28 L125 44 L125 60 L-25 60 Z',
         fill: _a2, stroke: null, layer: ArtLayer.background),
     ArtShape('M-25 78 H125', layer: ArtLayer.background),
-    ArtShape('M42 70 h16 v-4 h-16 Z M43 66 h14 v-5 h-14 Z M44 61 h12 v-5 h-12 Z '
-        'M45 56 h10 v-5 h-10 Z M46 51 h8 v-5 h-8 Z M47 46 h6 v-5 h-6 Z',
-        fill: _p),
-    ArtShape('M50 41 V33'),
-    ArtShape.circle(50, 30, 3, fill: _a, stroke: null),
-    ArtShape('M38 70 h24'),
+    // 층을 잘게 쌓으면 획이 내부를 먹어 검은 덩어리가 된다.
+    // 층수를 줄이고 획을 얇게 해 각 층이 보이게 한다.
+    ArtShape('M39 70 h22 v-7 h-22 Z', fill: _p, strokeWidth: 3),
+    ArtShape('M41 63 h18 v-7 h-18 Z', fill: _p, strokeWidth: 3),
+    ArtShape('M43 56 h14 v-7 h-14 Z', fill: _p, strokeWidth: 3),
+    ArtShape('M45 49 h10 v-7 h-10 Z', fill: _p, strokeWidth: 3),
+    ArtShape('M50 42 V34'),
+    ArtShape.circle(50, 31, 3.5, fill: _a, stroke: null),
+    ArtShape('M35 70 h30'),
   ]),
 
   // 43720 보은군 — 법주사 팔상전 (국보, 조선)
@@ -837,9 +841,10 @@ final Map<String, RegionArt> kLandmarkArt = {
     ArtShape('M-25 66 C-5 56 12 62 30 52 C45 44 58 46 72 54 C92 64 108 58 125 62 '
         'L125 88 L-25 88 Z',
         fill: _a2, stroke: null, layer: ArtLayer.background),
-    ArtShape('M32 44 L50 34 L68 44 Z', fill: _p),
-    ArtShape('M34 54 L50 46 L66 54 Z', fill: _p),
-    ArtShape('M36 64 L50 57 L64 64 Z', fill: _p),
+    // 지붕 사이가 좁은데 획이 굵으면 층이 붙어 검은 덩어리가 된다.
+    ArtShape('M30 45 L50 33 L70 45 Z', fill: _p, strokeWidth: 3),
+    ArtShape('M33 56 L50 46 L67 56 Z', fill: _p, strokeWidth: 3),
+    ArtShape('M36 66 L50 57 L64 66 Z', fill: _p, strokeWidth: 3),
     ArtShape('M44 70 V64 h12 v6', fill: _a),
     ArtShape('M36 70 h28'),
   ]),
@@ -870,10 +875,14 @@ final Map<String, RegionArt> kLandmarkArt = {
     ArtShape('M-25 66 H125', stroke: _a2, strokeWidth: 3,
         layer: ArtLayer.background),
     ArtShape('M-25 92 H125', layer: ArtLayer.background),
-    ArtShape('M36 70 h28 v-5 h-28 Z', fill: _p),
-    ArtShape('M37 65 h26 v-4 h-26 Z M40 61 h20 v-5 h-20 Z', fill: _p),
-    ArtShape('M39 56 h22 v-4 h-22 Z M42 52 h16 v-5 h-16 Z', fill: _p),
-    ArtShape('M41 47 h18 v-4 h-18 Z M44 43 h12 v-5 h-12 Z', fill: _p),
+    // 층을 다섯 개 쌓으면 획이 내부를 먹어 검은 덩어리가 된다.
+    // 층수를 줄이고 획을 얇게 하되, **얇고 넓은 지붕돌**이라는 백제 석탑의
+    // 비례는 유지한다.
+    ArtShape('M35 70 h30 v-7 h-30 Z', fill: _p, strokeWidth: 3),
+    ArtShape('M32 63 h36 v-6 h-36 Z', fill: _p, strokeWidth: 3),
+    ArtShape('M42 57 h16 v-7 h-16 Z', fill: _p, strokeWidth: 3),
+    ArtShape('M34 50 h32 v-6 h-32 Z', fill: _p, strokeWidth: 3),
+    ArtShape('M44 44 h12 v-6 h-12 Z', fill: _p, strokeWidth: 3),
     ArtShape('M50 38 V32'),
   ]),
 
@@ -929,15 +938,19 @@ final Map<String, RegionArt> kLandmarkArt = {
   //
   // 장면 구성: 강이 크게 휘도는 물굽이(핵심)와 양안 둔치(배경).
   // 도시 아이콘과 겹치지 않도록 건물을 넣지 않는다.
+  // 강을 **선 두 개**로 그렸더니 마주보는 곡선이 X 자로 보였다.
+  // 강은 면으로 그려야 물줄기로 읽힌다.
   '36110': const RegionArt('금강 굽이', [
-    ArtShape('M-25 36 C-5 30 12 34 30 30 C48 26 62 30 125 26',
+    ArtShape('M-25 96 V54 C-12 50 0 54 12 50 V96 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M125 96 V54 C112 50 100 54 88 50 V96 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M0 50 C-2 42 2 36 0 30 M-16 52 C-18 44 -14 38 -16 32 '
+        'M100 50 C98 42 102 36 100 30 M116 52 C114 44 118 38 116 32',
         stroke: _a2, strokeWidth: 3, layer: ArtLayer.background),
-    ArtShape('M-25 92 C0 86 25 98 50 92 C75 86 100 96 125 90',
-        stroke: _a2, layer: ArtLayer.background),
-    ArtShape('M27 44 C40 52 40 62 27 70', strokeWidth: 6),
-    ArtShape('M73 44 C60 52 60 62 73 70', strokeWidth: 6),
-    ArtShape('M38 54 C46 60 54 60 62 54', stroke: _a2),
-    ArtShape('M38 64 C46 70 54 70 62 64', stroke: _a2),
+    ArtShape('M30 26 C46 40 30 56 46 74 L62 74 C46 56 62 40 46 26 Z', fill: _p),
+    ArtShape('M40 42 C44 46 48 46 52 42', stroke: _a2, strokeWidth: 3),
+    ArtShape('M38 58 C42 62 46 62 50 58', stroke: _a2, strokeWidth: 3),
   ]),
 
   // 52190 남원시 — 광한루 (보물, 조선)
@@ -966,9 +979,9 @@ final Map<String, RegionArt> kLandmarkArt = {
         stroke: _a2, layer: ArtLayer.background),
     ArtShape('M-25 94 C-5 88 10 100 30 94 C50 88 65 100 85 94 C100 90 112 96 125 92',
         stroke: _a2, layer: ArtLayer.background),
-    ArtShape('M28 72 h44 V34 h-44 Z', fill: _p),
-    ArtShape('M28 42 h44 M28 50 h44 M28 58 h44 M28 65 h44',
-        stroke: _a2, strokeWidth: 3),
+    // 반듯한 사각형은 절벽이 아니라 상자로 보인다. 윗면을 들쭉날쭉하게 둔다.
+    ArtShape('M26 72 h46 V40 L62 36 L50 40 L38 35 L26 39 Z', fill: _p),
+    ArtShape('M26 48 h46 M26 56 h46 M26 64 h46', stroke: _a2, strokeWidth: 3),
   ]),
 
   // 12210 동구(광주) — 무등산 (국립공원, 자연경관)
@@ -1110,6 +1123,8 @@ final Map<String, RegionArt> kLandmarkArt = {
     ArtShape('M44 56 V38 h12 v18 Z', fill: _p),
     ArtShape('M42 38 h16 v-5 h-16 Z', fill: _p),
     ArtShape('M46 44 h8', stroke: _a, strokeWidth: 3),
+    // 빛줄기가 없으면 그냥 흰 병으로 보인다.
+    ArtShape('M40 35 h-9 M60 35 h9', stroke: _a, strokeWidth: 3),
   ]),
 
   // 31710 울주군 — 반구대 암각화 (국보, 선사)
@@ -1117,15 +1132,18 @@ final Map<String, RegionArt> kLandmarkArt = {
   // 장면 구성: 절벽면(배경) 위에 새겨진 고래와 사람(핵심).
   // 바위그림이라는 성격을 살려 **선각 실루엣**으로 그린다.
   '31710': const RegionArt('반구대 암각화', [
-    ArtShape('M-25 22 H125 V78 H-25 Z',
+    // 암벽면. 가로 결을 넣지 않으면 그냥 배경색으로 보인다.
+    ArtShape('M-25 22 H125 V80 H-25 Z',
         fill: _a2, stroke: null, layer: ArtLayer.background),
-    ArtShape('M-25 84 C0 78 25 90 50 84 C75 78 100 88 125 82',
+    ArtShape('M-25 34 H125 M-25 48 H125 M-25 62 H125 M-25 74 H125',
+        strokeWidth: 2, layer: ArtLayer.background),
+    ArtShape('M-25 90 C0 84 25 96 50 90 C75 84 100 94 125 88',
         stroke: _a2, layer: ArtLayer.background),
-    ArtShape('M30 52 C36 42 58 42 66 50 C70 54 70 58 66 60 C58 66 36 64 30 56 Z',
+    // 새긴 고래. 사람 형상을 함께 넣었더니 다리가 고래에 붙은 것처럼 보여 뺐다.
+    ArtShape('M31 52 C37 43 57 43 64 50 C68 54 68 57 64 59 C57 65 37 63 31 55 Z',
         fill: _p),
-    ArtShape('M66 50 L72 44 L72 58 L66 60', fill: _p),
-    ArtShape.circle(40, 51, 2.5, fill: ArtPalette.ink, stroke: null),
-    ArtShape('M44 66 V72 M50 66 V72', strokeWidth: 3),
+    ArtShape('M64 50 L70 44 L70 60 L64 59', fill: _p),
+    ArtShape.circle(40, 51, 2.4, fill: ArtPalette.ink, stroke: null),
   ]),
 
   // 31170 동구(울산) — 대왕암 (자연경관)
