@@ -653,6 +653,37 @@ final Map<ArtCategory, RegionArt> kCategoryArt = {
 /// 이는 조달 방식과 무관하며 **스타일화로 회피되지 않는다.** 현대 건축물은 넣지 않는다.
 /// 소재별 권리 검토는 `design/art-provenance.md` 참고.
 final Map<String, RegionArt> kLandmarkArt = {
+  // 11000 서울특별시 — 남산타워 (N서울타워)
+  //
+  // 장면 구성: 도시 스카이라인과 달(배경) 위로 솟은 타워(핵심).
+  // 스카이라인은 톱니 반복이라 좌우가 잘려도 도시로 읽힌다.
+  //
+  // **⚠ 이 소재만 저작권 예외다.** 1971년 완공된 현대 건축물이라
+  // 저작권법 제35조 제2항의 "판매의 목적으로 복제" 예외에 해당하고,
+  // "N서울타워" 는 상표이기도 하다. **사용자가 위험을 알고 채택했다(2026-08-13).**
+  // 근거와 조건은 `design/art-provenance.md` 참고 — 인앱결제 추가 전 법률 검토가 필요하다.
+  //
+  // 형태는 특정 사진을 보고 그리지 않고 일반적인 실루엣 인식과 자체 규격으로 그렸다.
+  '11000': const RegionArt('남산타워', [
+    // 배경 — 달과 도시 스카이라인
+    ArtShape.circle(88, 24, 9,
+        fill: _a, stroke: null, layer: ArtLayer.background),
+    ArtShape(
+        'M-25 80 L-25 68 L-15 68 L-15 60 L-5 60 L-5 72 L5 72 L5 64 L15 64 '
+        'L15 74 L25 74 L25 66 L35 66 L35 76 L45 76 L45 70 L55 70 L55 76 '
+        'L65 76 L65 66 L75 66 L75 74 L85 74 L85 62 L95 62 L95 72 L105 72 '
+        'L105 68 L115 68 L115 74 L125 74 L125 80 Z',
+        fill: _a2, stroke: null, layer: ArtLayer.background),
+    ArtShape('M-25 80 H125', layer: ArtLayer.background),
+    // 핵심 — 타워
+    ArtShape('M50 28 V37'),
+    ArtShape('M45 45 L47 37 h6 L55 45 Z', fill: _p),
+    ArtShape('M41 45 h18 v6 h-18 Z', fill: _p),
+    ArtShape('M44 48 h12', stroke: _a, strokeWidth: 3),
+    ArtShape('M46 51 L47 72 h6 L54 51 Z', fill: _p),
+    ArtShape('M40 72 h20'),
+  ]),
+
   // 47130 경주시 — 첨성대 (국보, 7세기)
   //
   // 장면 구성: 별이 흩뿌려진 밤하늘(배경) 위에 첨성대(핵심).

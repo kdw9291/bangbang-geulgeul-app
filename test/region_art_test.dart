@@ -116,8 +116,8 @@ void main() {
   });
 
   group('파일럿 아트 데이터', () {
-    test('랜드마크 6개 · 카테고리 8종이 모두 파싱된다', () {
-      expect(kLandmarkArt.length, 6);
+    test('랜드마크 7개 · 카테고리 8종이 모두 파싱된다', () {
+      expect(kLandmarkArt.length, 7);
       expect(kCategoryArt.length, ArtCategory.values.length);
 
       for (final art in [...kLandmarkArt.values, ...kCategoryArt.values]) {
@@ -204,14 +204,18 @@ void main() {
       // 목록에 새 소재를 넣을 때 이 테스트가 검토를 강제한다.
       // 판정 근거는 `design/art-provenance.md` 에 한 행씩 남긴다.
       //
-      // 현재는 전부 문화재·자연경관(보호기간 만료 또는 저작물 아님)이다.
       // **예외를 추가하려면 provenance 에 위험과 결정 근거를 먼저 적는다.**
-      // (남산타워는 1971년 현대 건축물이라 이 조건을 만족하지 않는다.
-      //  사용자가 위험을 알고 채택했으므로 제작 시 provenance 에 근거를 남긴다.)
-      const allowed = {
+      const safe = {
         '첨성대', '수원화성 팔달문', '하회마을', '돌하르방', '순천만 갈대밭', '울릉도',
       };
-      expect(kLandmarkArt.values.map((a) => a.name).toSet(), allowed);
+      // ⚠ 현대 건축물 예외. 1971년 완공이라 보호기간 내이고 상표 문제도 있다.
+      // 사용자가 위험을 알고 채택했다(2026-08-13). 인앱결제 추가 전 법률 검토 필요.
+      const riskyExceptions = {'남산타워'};
+
+      final names = kLandmarkArt.values.map((a) => a.name).toSet();
+      expect(names, safe.union(riskyExceptions));
+      // 예외가 늘어나면 여기서 걸린다. 하나씩 근거를 확인하고 늘린다.
+      expect(names.intersection(riskyExceptions).length, 1);
     });
   });
 

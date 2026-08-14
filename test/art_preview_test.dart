@@ -30,6 +30,7 @@ void main() {
     // 랜드마크 6종과 카테고리 8종을 나눠서 본다.
     // 카테고리는 206개 이상이 재사용하므로 서로 구분되는지가 특히 중요하다.
     final landmarks = <String, RegionArt>{
+      '남산타워': kLandmarkArt['11000']!,
       '첨성대': kLandmarkArt['47130']!,
       '팔달문': kLandmarkArt['41115']!,
       '하회마을': kLandmarkArt['47170']!,
