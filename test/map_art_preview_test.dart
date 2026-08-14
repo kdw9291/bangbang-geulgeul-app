@@ -58,6 +58,47 @@ void main() {
     expect(out.existsSync(), isTrue);
   });
 
+  test('배경 땅(북한)이 남한 위쪽에 그려진다', () async {
+    // 북한은 지도 위젯 **밖**(음수 y)에 있다. 프레임을 남한만으로 잡아야
+    // 남한 배율이 유지되기 때문이다. 실제로 그려지는지 눈으로 본다.
+    final data = await MapData.load();
+    expect(data.backgroundLand, isNotNull, reason: '에셋에 배경 땅이 없다');
+
+    final b = data.backgroundLand!.getBounds();
+    debugPrint('[NK] 배경 bounds y ${b.top.toStringAsFixed(0)}~'
+        '${b.bottom.toStringAsFixed(0)} (음수 = 남한 위쪽)');
+    expect(b.top, lessThan(0), reason: '배경이 남한 위쪽으로 뻗어야 한다');
+
+    // 남한 위쪽 여백까지 포함해 그린다.
+    const w = 700.0;
+    final k = w / data.size.width;
+    final top = -b.top * k; // 배경이 차지하는 위쪽 높이
+    final h = data.size.height * k + top;
+
+    final rec = ui.PictureRecorder();
+    final canvas = Canvas(rec);
+    canvas.translate(0, top);
+    KoreaMapPainter(
+      data: data,
+      scratched: const <String>{},
+      showSidoLines: true,
+      sea: kSeaAdopted,
+      seaCache: SeaBackgroundCache(),
+      theme: kThemeLight,
+      foilColor: kSeaAdopted.foil,
+      config: RenderConfig.adopted,
+      cache: MapPictureCache(),
+    ).paint(canvas, Size(w, data.size.height * k));
+
+    final img = await rec.endRecording().toImage(w.toInt(), h.toInt());
+    final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+    final out = File('build/map_with_nk.png');
+    out.parent.createSync(recursive: true);
+    out.writeAsBytesSync(bytes!.buffer.asUint8List());
+    debugPrint('[NK] 저장 ${out.path}');
+    expect(out.existsSync(), isTrue);
+  });
+
   test('아트를 얹어도 지도 Picture 기록이 폭주하지 않는다', () async {
     // 지도 Picture 는 **긁은 집합이 바뀔 때만** 다시 기록한다. 매 프레임이 아니다.
     // 그래도 지역을 하나 긁을 때마다 도는 비용이라 재 둔다.
@@ -71,7 +112,14 @@ void main() {
       final sw = Stopwatch()..start();
       for (var i = 0; i < 5; i++) {
         final cache = MapPictureCache();
-        cache.obtain(data, scratched, true, true, const Color(0xFF3B3944));
+        cache.obtain(
+        data: data,
+        scratched: scratched,
+        sidoLines: true,
+        stroke: true,
+        foil: const Color(0xFF3B3944),
+        bgLand: kThemeDark.backgroundLand,
+        bgLandStroke: kThemeDark.backgroundLandStroke);
         cache.dispose();
       }
       sw.stop();

@@ -94,6 +94,7 @@ class MapData {
     required this.sidoNames,
     required this.regions,
     required this.sidoLines,
+    required this.backgroundLand,
     required this.vertexCount,
     required this.loadMs,
     required this.readMs,
@@ -108,6 +109,17 @@ class MapData {
   /// 시도 외곽선. **배열 순서는 시도 인덱스와 무관하다** — 에셋의 피처 순서를
   /// 그대로 따르므로, 색을 칠할 때는 반드시 각 항목의 `sido` 를 써야 한다.
   final List<SidoLine> sidoLines;
+
+  /// 북한 등 **선택할 수 없는 배경 땅.**
+  ///
+  /// `regions` 에 넣지 않는다 — 넣으면 지역 판정·카테고리 생성기·개수 검사·
+  /// 시도 달성률이 전부 오염된다. 긁기 단위가 아니라 배경일 뿐이다.
+  ///
+  /// **y 가 음수다.** 지도 프레임은 남한만으로 정하므로(그래야 남한 배율이
+  /// 유지된다) 북한은 위쪽으로 벗어난다. 렌더는 이 영역이 잘리지 않도록
+  /// 클리핑을 풀어야 한다.
+  final Path? backgroundLand;
+
   final int vertexCount;
 
   /// 전체 로딩 시간과 그 내역. 어느 단계가 병목인지 알아야 줄일 수 있다.
@@ -171,6 +183,12 @@ class MapData {
       ));
     }
 
+    // 배경 땅은 여러 링을 한 Path 로 합친다. 개별 링을 구분할 이유가 없다.
+    Path? background;
+    if (json['bg'] case final List raw when raw.isNotEmpty) {
+      background = buildPath(raw);
+    }
+
     final lines = <SidoLine>[];
     for (final s in json['sidoLines'] as List) {
       final m = s as Map<String, dynamic>;
@@ -186,6 +204,7 @@ class MapData {
       sidoNames: (json['sidos'] as List).cast<String>(),
       regions: regions,
       sidoLines: lines,
+      backgroundLand: background,
       vertexCount: vertices,
       loadMs: sw.elapsedMilliseconds,
       readMs: readMs,

@@ -17,14 +17,27 @@ clone 하면 **에셋을 재생성할 수도 검증할 수도 없었다.** 카�
 네트워크 없이도 에셋을 다시 만들 수 있다. 셋 합쳐 1MB 미만이다.
 
 실행 (`source/android` 에서):
-    python tool/map/make_asset.py tool/map/sgg_merged.geojson         tool/map/sido_simplified.geojson assets/map/korea_sgg.json
+    python tool/map/make_asset.py tool/map/sgg_merged.geojson         tool/map/sido_simplified.geojson assets/map/korea_sgg.json         tool/map/nk.geojson
 """
 import json, sys, io, math, os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from merge_spec import unit_for, MERGED_SIDOS  # noqa: E402
 
-SGG, SIDO, OUT = sys.argv[1], sys.argv[2], sys.argv[3]
+# **북한 배경 입력은 기본적으로 필수다.**
+#
+# 선택 인자로 두었더니 README 의 명령에 빠져 있어도 성공 종료하면서 배경 없는
+# 에셋이 나왔다 — 재현성을 위해 파이프라인을 옮긴 목적과 정면으로 충돌한다
+# (Codex 13회차 지적). 남한 전용이 정말 필요하면 명시적으로 요구하게 한다.
+argv = [a for a in sys.argv[1:] if a != '--without-background']
+WITHOUT_BG = '--without-background' in sys.argv
+
+if len(argv) < 3 or (len(argv) < 4 and not WITHOUT_BG):
+    sys.exit('사용법: make_asset.py <sgg_merged> <sido> <out> <nk>'
+             '  (배경 없이 만들려면 --without-background 를 명시할 것)')
+
+SGG, SIDO, OUT = argv[0], argv[1], argv[2]
+NK = None if WITHOUT_BG else argv[3]
 KX = 111.32 * math.cos(math.radians(36.5)); KY = 110.57
 OFFSET = {"47940": (-95.0, 0.0)}          # 울릉군을 동해 안쪽으로 당긴다
 
@@ -63,6 +76,12 @@ missing = MERGED_SIDOS - {SIDOS[r['s']] for r in raw}
 if missing:
     sys.exit('병합 대상 시도가 입력에 없다: %s' % missing)
 
+# **지도 프레임은 남한(긁기 단위)만으로 정한다.**
+#
+# 북한 배경을 여기 섞으면 `oy`·`H` 가 바뀌어 **남한 좌표가 전부 재계산되고
+# 화면에서 작아진다.** 전국 뷰에서 최소 지역이 이미 약 2px 라 더 줄면 탭도
+# 인지도 불가능해진다. 그래서 북한은 프레임 계산에서 제외하고, 같은 변환만
+# 적용해 **y 가 음수인 좌표**로 둔다 — 남한 위쪽에 놓인다는 뜻이다.
 xs = [x for r in raw for ring in r['rings'] for x, _ in ring]
 ys = [y for r in raw for ring in r['rings'] for _, y in ring]
 PAD = 10.0
@@ -92,8 +111,28 @@ for f in json.load(open(SIDO, encoding='utf-8'))['features']:
         if len(flat) >= 8: rr.append(flat)
     sido_lines.append({'s': SIDX[nm], 'r': rr})
 
+# 북한 배경. **긁기 단위가 아니다** — `regions` 에 넣으면 지역 판정·카테고리
+# 생성기·개수 검사·시도 달성률이 전부 오염된다. 별도 키로 분리한다.
+bg = []
+if NK:
+    nk_pts = 0
+    for f in json.load(open(NK, encoding='utf-8'))['features']:
+        for ring in rings(f['geometry'], 0, 0):
+            flat = []
+            for x, y in ring:
+                flat.append(round(x - ox, 1)); flat.append(round(y - oy, 1))
+            if len(flat) >= 8:
+                bg.append(flat); nk_pts += len(flat) // 2
+    if not bg:
+        sys.exit('배경 입력에 쓸 만한 링이 없다: %s' % NK)
+    ny = [flat[i] for flat in bg for i in range(1, len(flat), 2)]
+    print('배경(북한) 링 %d개 · 정점 %d개 · y %.0f~%.0f (음수 = 남한 위쪽)'
+          % (len(bg), nk_pts, min(ny), max(ny)))
+
 data = {'w': round(W, 1), 'h': round(H, 1), 'sidos': SIDOS,
         'regions': regions, 'sidoLines': sido_lines}
+if bg:
+    data['bg'] = bg
 io.open(OUT, 'w', encoding='utf-8').write(json.dumps(data, ensure_ascii=False, separators=(',', ':')))
 
 import os

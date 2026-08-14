@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mapscratch/map_data.dart';
@@ -160,12 +162,50 @@ void main() {
         reason: '획 표시가 달라지면 다시 그려야 한다');
   });
 
+  test('배경 땅 색만 달라도 다시 기록한다', () {
+    // 테마 전체를 바꾸는 테스트는 선택선 색도 함께 달라져, 배경색 비교를
+    // 실수로 지워도 통과한다. 이 경로만 고립해서 본다 (Codex 13회차 지적).
+    final cache = MapPictureCache();
+    ui.Picture make(Color bg, Color stroke) => cache.obtain(
+          data: data,
+          scratched: const <String>{},
+          sidoLines: true,
+          stroke: true,
+          foil: const Color(0xFF474553),
+          bgLand: bg,
+          bgLandStroke: stroke,
+        );
+
+    final a = make(const Color(0xFF111111), const Color(0xFF222222));
+    final b = make(const Color(0xFF999999), const Color(0xFF222222));
+    expect(identical(a, b), isFalse, reason: '배경 채움색이 바뀌면 다시 기록해야 한다');
+
+    final c = make(const Color(0xFF999999), const Color(0xFF888888));
+    expect(identical(b, c), isFalse, reason: '배경 경계색이 바뀌면 다시 기록해야 한다');
+
+    final d = make(const Color(0xFF999999), const Color(0xFF888888));
+    expect(identical(c, d), isTrue, reason: '같으면 재사용해야 한다');
+    cache.dispose();
+  });
+
   test('Picture 캐시는 획 표시가 바뀌면 다시 기록한다', () {
     final cache = MapPictureCache();
     final withStroke = cache.obtain(
-        data, const <String>{}, true, true, const Color(0xFF474553));
+        data: data,
+        scratched: const <String>{},
+        sidoLines: true,
+        stroke: true,
+        foil: const Color(0xFF474553),
+        bgLand: kThemeDark.backgroundLand,
+        bgLandStroke: kThemeDark.backgroundLandStroke);
     final noStroke = cache.obtain(
-        data, const <String>{}, true, false, const Color(0xFF474553));
+        data: data,
+        scratched: const <String>{},
+        sidoLines: true,
+        stroke: false,
+        foil: const Color(0xFF474553),
+        bgLand: kThemeDark.backgroundLand,
+        bgLandStroke: kThemeDark.backgroundLandStroke);
     expect(identical(withStroke, noStroke), isFalse);
     cache.dispose();
   });
@@ -173,18 +213,42 @@ void main() {
   test('Picture 캐시는 긁은 내용이 바뀌면 다시 기록한다', () {
     final cache = MapPictureCache();
     final first = cache.obtain(
-        data, const <String>{}, true, false, const Color(0xFF474553));
+        data: data,
+        scratched: const <String>{},
+        sidoLines: true,
+        stroke: false,
+        foil: const Color(0xFF474553),
+        bgLand: kThemeDark.backgroundLand,
+        bgLandStroke: kThemeDark.backgroundLandStroke);
     final same = cache.obtain(
-        data, const <String>{}, true, false, const Color(0xFF474553));
+        data: data,
+        scratched: const <String>{},
+        sidoLines: true,
+        stroke: false,
+        foil: const Color(0xFF474553),
+        bgLand: kThemeDark.backgroundLand,
+        bgLandStroke: kThemeDark.backgroundLandStroke);
     expect(identical(first, same), isTrue, reason: '같은 상태면 재사용해야 한다');
 
-    final changed = cache.obtain(data, {data.regions.first.scratchUnitId}, true, false,
-        const Color(0xFF474553));
+    final changed = cache.obtain(
+        data: data,
+        scratched: {data.regions.first.scratchUnitId},
+        sidoLines: true,
+        stroke: false,
+        foil: const Color(0xFF474553),
+        bgLand: kThemeDark.backgroundLand,
+        bgLandStroke: kThemeDark.backgroundLandStroke);
     expect(identical(first, changed), isFalse, reason: '내용이 바뀌면 새로 기록해야 한다');
 
     // 개수가 같고 내용만 다른 경우도 구분해야 한다
-    final other = cache.obtain(data, {data.regions[1].scratchUnitId}, true, false,
-        const Color(0xFF474553));
+    final other = cache.obtain(
+        data: data,
+        scratched: {data.regions[1].scratchUnitId},
+        sidoLines: true,
+        stroke: false,
+        foil: const Color(0xFF474553),
+        bgLand: kThemeDark.backgroundLand,
+        bgLandStroke: kThemeDark.backgroundLandStroke);
     expect(identical(changed, other), isFalse);
 
     cache.dispose();

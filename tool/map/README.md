@@ -20,6 +20,8 @@
 | `sgg_simplified.geojson` | 시군구 256개 (mapshaper 4% 단순화 결과) |
 | `sgg_merged.geojson` | 서울·제주 통합 후 231개 — **2단계 산출물** |
 | `sido_simplified.geojson` | 시도 16개 외곽선 |
+| `extract_nk.py` | Natural Earth 에서 북한만 뽑는다 |
+| `nk.geojson` | 북한 배경 (Natural Earth 1:50m, **public domain**) — 링 2개·정점 257 |
 
 ## 절차
 
@@ -52,14 +54,32 @@ npx -y mapshaper@0.7.52 sgg_simplified.geojson -each "unit = (sidonm=='서울특
 `source/android` 에서 실행한다.
 
 ```bash
-python tool/map/make_asset.py tool/map/sgg_merged.geojson tool/map/sido_simplified.geojson assets/map/korea_sgg.json
+python tool/map/make_asset.py tool/map/sgg_merged.geojson tool/map/sido_simplified.geojson assets/map/korea_sgg.json tool/map/nk.geojson
 ```
+
+> **북한 입력은 필수다.** 빠뜨리면 생성기가 실패한다. 예전에는 선택 인자라
+> 문서 명령에 빠져 있어도 조용히 배경 없는 에셋이 나왔다.
+> 정말 배경 없이 만들어야 하면 `--without-background` 를 명시한다.
 
 경위도를 등장방형 투영으로 미리 평면화하고 원점을 0으로 옮긴다. 런타임에 삼각함수가 없다.
 y 는 화면 좌표(아래로 증가) 기준으로 저장한다 — 렌더에서 y 만 뒤집으면 기울기가 어긋난다.
 울릉군만 동해 안쪽으로 95km 당긴다(bbox 를 65km 넓히기 때문).
 
 결과: 310KB · 긁기 단위 231개(정점 18,042) · 시도선 16개(정점 7,534) · 489 × 623 km.
+
+### 3-1. 북한 배경 갱신 (선택 — 이미 `nk.geojson` 이 있으면 건너뛴다)
+
+[Natural Earth](https://www.naturalearthdata.com/) `ne_50m_admin_0_countries` (**public domain** —
+상업 이용·수정·재배포 제약 없음, 출처 표시 불필요). 원본 2.9MB 는 저장소에 넣지 않고
+북한만 뽑아 6KB 로 둔다. **선택 불가한 배경 실루엣**이라 1:50m 로 충분하다.
+
+```bash
+curl -O https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_admin_0_countries.geojson
+python tool/map/extract_nk.py ne_50m_admin_0_countries.geojson tool/map/nk.geojson
+```
+
+배경은 지도 프레임 계산에서 **제외**된다 — 넣으면 남한 좌표가 재계산되어 화면에서 작아진다.
+결과 좌표는 y 가 음수이며(남한 위쪽), 렌더가 클리핑을 풀어야 보인다.
 
 ### 4. 카테고리 배정 재생성
 

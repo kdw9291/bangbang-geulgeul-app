@@ -68,6 +68,20 @@ void main() {
       expect(v.boundaryMargin, EdgeInsets.zero,
           reason: '여백을 주면 지도를 화면 밖으로 끌어낼 수 있다');
       expect(v.maxScale, greaterThan(1.0));
+
+      // **`InteractiveViewer` 의 자식은 지도여야 한다.**
+      //
+      // 자식이 뷰포트 크기(`Center` 등)가 되면 `boundaryMargin` 이 제한하는
+      // 대상이 지도가 아니라 뷰포트가 되어, 크게 확대해 끌면 지도가 화면 밖으로
+      // 나간다. M14 에서 실제로 이렇게 깨뜨렸다 (Codex 13회차 지적).
+      final child = v.child;
+      expect(child, isA<SizedBox>(),
+          reason: 'InteractiveViewer 의 자식은 지도 크기여야 한다');
+      final box = child as SizedBox;
+      expect(box.width, isNotNull);
+      expect(box.height, isNotNull);
+      expect(box.width! < tester.view.physicalSize.width, isTrue,
+          reason: '자식이 뷰포트 전체 크기면 이동 경계가 지도 기준이 아니다');
     });
   });
 }

@@ -73,13 +73,30 @@ const kMapArtMinSide = 18.0;
 const kMapArtOpacity = 0.42;
 
 void _paintMap(
-  Canvas canvas,
-  MapData data,
-  Set<String> scratched,
-  bool sidoLines,
-  bool stroke,
-  Color foil,
-) {
+  Canvas canvas, {
+  required MapData data,
+  required Set<String> scratched,
+  required bool sidoLines,
+  required bool stroke,
+  required Color foil,
+  required Color bgLand,
+  required Color bgLandStroke,
+}) {
+  // 배경 땅(북한)을 **가장 먼저** 그린다. 긁기 단위가 아니라 뒤에 깔리는 땅이다.
+  // y 가 음수라 남한 위쪽으로 벗어나며, 호출부가 클리핑을 풀어야 보인다.
+  if (data.backgroundLand case final bg?) {
+    canvas.drawPath(bg, Paint()..color = bgLand);
+    // 바다와의 경계를 분명히 한다.
+    canvas.drawPath(
+      bg,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..strokeJoin = StrokeJoin.round
+        ..color = bgLandStroke,
+    );
+  }
+
   final fill = Paint()..style = PaintingStyle.fill;
   final hair = Paint()
     ..style = PaintingStyle.stroke
@@ -137,31 +154,48 @@ class MapPictureCache {
   bool? _sidoLines;
   bool? _stroke;
   Color? _foil;
+  Color? _bgLand;
+  Color? _bgLandStroke;
 
-  ui.Picture obtain(
-    MapData data,
-    Set<String> scratched,
-    bool sidoLines,
-    bool stroke,
-    Color foil,
-  ) {
+  /// 인자가 많아 **이름 있는 인자**를 쓴다. 순서를 틀리면 색 두 개가 조용히
+  /// 뒤바뀌어 캐시가 엉뚱한 그림을 재생한다.
+  ui.Picture obtain({
+    required MapData data,
+    required Set<String> scratched,
+    required bool sidoLines,
+    required bool stroke,
+    required Color foil,
+    required Color bgLand,
+    required Color bgLandStroke,
+  }) {
     final stale = _picture == null ||
         !identical(_data, data) ||
         _sidoLines != sidoLines ||
         _stroke != stroke ||
         _foil != foil ||
+        _bgLand != bgLand ||
+        _bgLandStroke != bgLandStroke ||
         !setEquals(_scratched, scratched);
 
     if (stale) {
       _picture?.dispose();
       final recorder = ui.PictureRecorder();
-      _paintMap(Canvas(recorder), data, scratched, sidoLines, stroke, foil);
+      _paintMap(Canvas(recorder),
+          data: data,
+          scratched: scratched,
+          sidoLines: sidoLines,
+          stroke: stroke,
+          foil: foil,
+          bgLand: bgLand,
+          bgLandStroke: bgLandStroke);
       _picture = recorder.endRecording();
       _data = data;
       _scratched = Set.unmodifiable(scratched);
       _sidoLines = sidoLines;
       _stroke = stroke;
       _foil = foil;
+      _bgLand = bgLand;
+      _bgLandStroke = bgLandStroke;
     }
     return _picture!;
   }
@@ -174,6 +208,8 @@ class MapPictureCache {
     _sidoLines = null;
     _stroke = null;
     _foil = null;
+    _bgLand = null;
+    _bgLandStroke = null;
   }
 }
 
@@ -215,16 +251,32 @@ class KoreaMapPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    // 지도 위젯 **밖**(배경 땅이 놓이는 음수 y 영역)의 바탕색은 여기서 칠하지
+    // 않는다. 호출부가 뷰포트를 `ColoredBox` 로 정확히 채운다 — painter 안에서
+    // 큰 사각형으로 덮으면 범위가 매직 넘버가 되고 확대·이동까지 따라 움직인다.
     canvas.drawPicture(seaCache.obtain(size, sea));
     canvas.save();
     canvas.scale(size.width / data.size.width);
 
     if (config.usesPicture) {
       canvas.drawPicture(cache.obtain(
-          data, scratched, showSidoLines, config.strokes, foilColor));
+        data: data,
+        scratched: scratched,
+        sidoLines: showSidoLines,
+        stroke: config.strokes,
+        foil: foilColor,
+        bgLand: theme.backgroundLand,
+        bgLandStroke: theme.backgroundLandStroke,
+      ));
     } else {
-      _paintMap(
-          canvas, data, scratched, showSidoLines, config.strokes, foilColor);
+      _paintMap(canvas,
+          data: data,
+          scratched: scratched,
+          sidoLines: showSidoLines,
+          stroke: config.strokes,
+          foil: foilColor,
+          bgLand: theme.backgroundLand,
+          bgLandStroke: theme.backgroundLandStroke);
     }
 
     final sel = selected;
@@ -250,6 +302,8 @@ class KoreaMapPainter extends CustomPainter {
       old.config != config ||
       old.showSidoLines != showSidoLines ||
       old.sea != sea ||
+      old.theme.backgroundLand != theme.backgroundLand ||
+      old.theme.backgroundLandStroke != theme.backgroundLandStroke ||
       old.theme.selectionOuter != theme.selectionOuter ||
       old.theme.selectionInner != theme.selectionInner ||
       old.foilColor != foilColor ||

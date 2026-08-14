@@ -23,6 +23,8 @@ class AppTheme {
     required this.onSurfaceGhost,
     required this.foilLight,
     required this.foilDark,
+    required this.backgroundLand,
+    required this.backgroundLandStroke,
     required this.good,
     required this.bad,
     required this.selectionOuter,
@@ -58,6 +60,18 @@ class AppTheme {
   final Color good;
   final Color bad;
 
+  /// 북한 등 선택 불가한 배경 땅.
+  ///
+  /// **미수집 은박과 뚜렷이 달라야 한다.** 같은 회색 계열이면 사용자가 긁을 수
+  /// 있는 지역으로 오해한다 (Codex 13회차 지적).
+  ///
+  /// 연한 연두 계열을 쓴다 (2026-08-14 사용자 결정). 은박(회보라)·시도 색과
+  /// 색상 축이 겹치지 않아 "긁을 수 없는 땅"으로 읽힌다.
+  final Color backgroundLand;
+
+  /// 배경 땅의 경계선. 바다와의 경계를 분명히 한다.
+  final Color backgroundLandStroke;
+
   /// 지도에서 선택한 지역 외곽선 — **두 겹으로 그린다.**
   ///
   /// 단일 강조색으로는 시도 16색과 바다 3종을 모두 커버할 수 없다. 실측하니
@@ -90,6 +104,8 @@ const kThemeDark = AppTheme(
   onSurfaceGhost: Color(0x5AFFFFFF),
   foilLight: Color(0xFF5A5766),
   foilDark: Color(0xFF3B3944),
+  backgroundLand: Color(0xFF3B4A32),
+  backgroundLandStroke: Color(0xFF5E7350),
   good: Color(0xFF69DB7C),
   bad: Color(0xFFFF8787),
   selectionOuter: Color(0xFF15181D),
@@ -112,6 +128,8 @@ const kThemeLight = AppTheme(
   onSurfaceGhost: Color(0x7A16212E),
   foilLight: Color(0xFFD3DCE5),
   foilDark: Color(0xFFAAB7C4),
+  backgroundLand: Color(0xFFD6E7BE),
+  backgroundLandStroke: Color(0xFFA8C489),
   good: Color(0xFF2B8A3E),
   bad: Color(0xFFD9480F),
   selectionOuter: Color(0xFFFFFFFF),

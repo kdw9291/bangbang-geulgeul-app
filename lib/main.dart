@@ -350,29 +350,60 @@ class _MapSpikePageState extends State<MapSpikePage>
         if (_config.mode == RenderMode.pictureBoundary) {
           map = RepaintBoundary(child: map);
         }
-        // GestureDetector 를 InteractiveViewer 안쪽에 두면 확대·이동 변환의
-        // 역변환을 Flutter 가 알아서 해준다. localPosition 은 항상 지도
-        // 위젯 기준 좌표로 들어온다.
-        map = GestureDetector(
+        final h = w * aspect;
+        final viewport = Size(c.maxWidth, c.maxHeight);
+        // 지도 위젯이 뷰포트 안에서 중앙에 놓이는 위치.
+        final mapOrigin =
+            Offset((viewport.width - w) / 2, (viewport.height - h) / 2);
+
+        // **탭을 InteractiveViewer 바깥에서 받는다.**
+        //
+        // 배경 땅(북한)은 지도 위젯 밖(음수 y)에 그려지므로 `Clip.none` 이
+        // 필요한데, 그러면 그 영역은 **자식 경계 밖이라 제스처를 받지 못한다.**
+        // 안쪽에 두면 북한을 탭했을 때 `null` 이 아니라 아예 무시되어 이전
+        // 선택이 남는다 (Codex 13회차 지적).
+        //
+        // 바깥에서 받고 `toScene` 으로 직접 변환하면 배경 영역 탭도 정상적으로
+        // "바다(=선택 없음)" 로 판정된다.
+        return GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTapDown: (e) => _onTapMap(e.localPosition, d, w),
-          child: map,
-        );
-        return Center(
-          // **지도 밖 빈 공간이 보이지 않게 이동·축소를 제한한다.**
+          // **`mapOrigin` 을 `toScene` 앞에서 뺀다.**
           //
-          // `boundaryMargin` 이 400 이면 사방 400px 까지 끌어낼 수 있어 지도가
-          // 화면 밖으로 밀려나고 배경만 남는다. `minScale` 이 1 미만이면 축소
-          // 했을 때 지도가 화면보다 작아져 같은 문제가 생긴다.
-          //
-          // `w` 는 화면에 맞춰 계산한 폭이므로 배율 1이 "꽉 찬 상태"다.
-          // 여기서 더 줄일 이유가 없다.
-          child: InteractiveViewer(
-            transformationController: _tc,
-            minScale: 1.0,
-            maxScale: 16,
-            boundaryMargin: EdgeInsets.zero,
-            child: SizedBox(width: w, height: w * aspect, child: map),
+          // `Center` 가 `InteractiveViewer` **밖**에 있으므로 변환은 지도 위젯
+          // 좌표계에서 일어난다. 순서를 바꾸면(`toScene(x) - origin`) 확대율이
+          // 1이 아닐 때 어긋난다 — `M⁻¹(s−o)` 와 `M⁻¹(s)−o` 는 다르다.
+          onTapDown: (e) =>
+              _onTapMap(_tc.toScene(e.localPosition - mapOrigin), d, w),
+          // 바다 바탕을 뷰포트에 정확히 채운다. painter 안에서 큰 사각형으로
+          // 칠하면 범위가 매직 넘버가 되고 변환까지 따라 움직인다.
+          child: ColoredBox(
+            color: _sea.base,
+            // 화면 밖으로 넘치는 배경까지 그려지지 않도록 여기서 한 번 자른다.
+            child: ClipRect(
+            // **지도 밖 빈 공간이 보이지 않게 이동·축소를 제한한다.**
+            //
+            // `boundaryMargin` 이 400 이면 사방 400px 까지 끌어낼 수 있어 지도가
+            // 화면 밖으로 밀려나고 배경만 남는다. `minScale` 이 1 미만이면 축소
+            // 했을 때 지도가 화면보다 작아져 같은 문제가 생긴다.
+            //
+            // **`Center` 는 `InteractiveViewer` 바깥이어야 한다.**
+            //
+            // 안쪽에 두면 자식이 뷰포트 크기가 되어, `boundaryMargin` 이 제한하는
+            // 대상이 남한 지도가 아니라 **뷰포트 전체**가 된다. 그러면 크게 확대해
+            // 끝까지 끌었을 때 지도가 화면 밖으로 나가고 바다만 남는다
+            // (Codex 13회차 재검토 지적 — M13 을 M14 가 깨뜨렸다).
+            child: Center(
+              child: InteractiveViewer(
+                transformationController: _tc,
+                minScale: 1.0,
+                maxScale: 16,
+                boundaryMargin: EdgeInsets.zero,
+                // 배경 땅은 지도 위젯 위쪽으로 벗어나 있다. 여기서 자르면 안 보인다.
+                clipBehavior: Clip.none,
+                child: SizedBox(width: w, height: h, child: map),
+              ),
+            ),
+          ),
           ),
         );
       },
