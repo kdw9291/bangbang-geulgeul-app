@@ -8,7 +8,10 @@
 
 import 'art_category.dart';
 
-/// 시군구 코드 → 카테고리. 랜드마크가 있는 지역도 폴백으로 가진다.
+/// `Region.scratchUnitId` → 카테고리. 랜드마크가 있는 지역도 폴백으로 가진다.
+///
+/// 키는 통계청 시군구 코드와 대부분 같지만 전부는 아니다 —
+/// 서울 `11000` · 제주 `50000` 은 통합으로 생긴 합성 ID 다.
 const Map<String, ArtCategory> kRegionCategory = {
   '11000': ArtCategory.city, // 서울 도심 — 25개 구를 합친 긁기 단위
   '26110': ArtCategory.city, // 부산 도심

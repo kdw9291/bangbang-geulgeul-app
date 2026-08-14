@@ -1421,13 +1421,13 @@ RegionArt _buildCityScene(int layout) {
 final List<RegionArt> kCityScenes =
     List.generate(kCityLayoutCount, _buildCityScene);
 
-/// 지역 코드에 해당하는 아트를 고른다.
+/// `Region.scratchUnitId` 에 해당하는 아트를 고른다.
 ///
 /// **상호 배타적 폴백 등급이다** — 랜드마크가 있으면 랜드마크, 없으면 카테고리,
 /// 카테고리도 없으면 `null`(1층: 단색 + 지역명). 합성 레이어가 아니다.
 ///
-/// 카테고리 배정 256개는 `region_category.g.dart` 에 있고
-/// `design/tools/make_category_map.py` 가 만든다. 배정 근거는
+/// 카테고리 배정 **231개**는 `region_category.g.dart` 에 있고
+/// `tool/category/make_category_map.py` 가 만든다. 배정 근거는
 /// `design/category-assignment.md` 참고.
 RegionArt? artForRegion(String code) {
   final landmark = kLandmarkArt[code];
