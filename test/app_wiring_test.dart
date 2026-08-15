@@ -19,6 +19,19 @@ void main() {
   late MapData realMap;
   setUpAll(() async => realMap = await MapData.load());
 
+  // 기본 테스트 화면(800×600)은 실제 폰보다 **가로로 넓고 세로로 짧다.**
+  // 소개 팝업이 세로로 넘쳐 레이아웃 오류가 났다. 실기기(Galaxy S25) 크기로 맞춘다.
+  setUp(() {
+    final view = TestWidgetsFlutterBinding.instance.platformDispatcher.views.first;
+    view.physicalSize = const Size(1080, 2340);
+    view.devicePixelRatio = 3.0;
+  });
+  tearDown(() {
+    final view = TestWidgetsFlutterBinding.instance.platformDispatcher.views.first;
+    view.resetPhysicalSize();
+    view.resetDevicePixelRatio();
+  });
+
   /// 바이트만 흉내 내는 저장소. 파싱·직렬화는 프로덕션 코드가 한다.
   CollectionStorage mem(String? contents) => _MemStorage(contents);
 
@@ -116,6 +129,51 @@ void main() {
       // 비어 있어도 뜨므로, 그것만 보면 반영 코드를 지워도 통과한다
       // (Codex 17회차).
       expect(scratchedInPainter(tester), contains('DK001'));
+    });
+  });
+
+  group('검색 진입', () {
+    // **검색은 접근 수단일 뿐이고 그 뒤 흐름은 탭과 같아야 한다.**
+    // 시트가 `Region` 을 돌려주는 것까지만 검사하면, 나중에 별도 경로가
+    // 생기거나 쓰기 차단을 건너뛰어도 잡지 못한다 (Codex 18회차).
+
+    Future<void> pickFromSearch(WidgetTester tester, String query) async {
+      await tester.tap(find.text('지역 검색'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), query);
+      await tester.pumpAndSettle();
+      // 입력란에도 같은 글자가 있으므로 **결과 행**을 짚어서 누른다.
+      await tester.tap(find.widgetWithText(ListTile, query).first);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('검색으로 고르면 탭했을 때와 같은 소개 팝업이 열린다', (tester) async {
+      await pumpApp(tester,
+          mapLoader: mapAfter(null), storeOpener: opener(mem(null)));
+      await settle(tester);
+
+      await pickFromSearch(tester, '경주시');
+
+      // 소개 팝업의 표지 — 지역명과 긁기 버튼.
+      expect(find.text('지역 긁기'), findsOneWidget);
+      expect(find.text('경주시'), findsWidgets);
+    });
+
+    testWidgets('쓰기 불가 상태에서는 검색으로 들어가도 긁기로 넘어가지 않는다', (tester) async {
+      // 더 새로운 버전이라 쓰기를 막은 상태. 긁게 두면 사용자가 한 일이
+      // 통째로 버려진다.
+      await pumpApp(tester,
+          mapLoader: mapAfter(null),
+          storeOpener: opener(mem('{"version":99,"units":[]}')));
+      await settle(tester);
+
+      await pickFromSearch(tester, '경주시');
+      await tester.tap(find.text('지역 긁기'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('업데이트'), findsWidgets);
+      expect(find.text('손가락으로 문질러 긁어보세요'), findsNothing,
+          reason: '쓰기 불가인데 긁기 화면으로 넘어갔다');
     });
   });
 

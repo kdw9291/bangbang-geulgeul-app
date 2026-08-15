@@ -13,7 +13,9 @@ import 'hit_test.dart';
 import 'map_data.dart';
 import 'map_painter.dart';
 import 'region_art.dart';
+import 'region_search.dart';
 import 'scratch_page.dart';
+import 'search_sheet.dart';
 import 'sea_background.dart';
 
 void main() => runApp(const MapScratchApp());
@@ -134,6 +136,9 @@ class _MapSpikePageState extends State<MapSpikePage>
   /// 수집 기록의 원본. 저장에 성공해야 스냅샷이 바뀐다.
   CollectionStore? _store;
 
+  /// 이름·초성 검색. 에셋을 읽은 뒤에 만든다.
+  RegionSearcher? _searcher;
+
   /// 저장 로드 결과. 쓸 수 없는 상태면 긁기 화면 진입을 막는다.
   CollectionLoadResult? _loadResult;
 
@@ -188,6 +193,7 @@ class _MapSpikePageState extends State<MapSpikePage>
       setState(() {
         _data = d;
         _hitTester = RegionHitTester(d.regions);
+        _searcher = RegionSearcher(d);
         _store = store;
         _loadResult = result;
         _scratched =
@@ -321,6 +327,27 @@ class _MapSpikePageState extends State<MapSpikePage>
     if (hit != null && !_benchmarking) _openRegion(hit, d);
   }
 
+  /// 검색으로 고른 지역은 **탭한 것과 똑같이** 다룬다.
+  ///
+  /// 별도 경로를 만들지 않는다 — 검색은 접근 수단일 뿐이고, 그 뒤 흐름은
+  /// 소개 팝업 → 긁기로 하나여야 한다.
+  Future<void> _openSearch(MapData d) async {
+    final searcher = _searcher;
+    if (searcher == null) return;
+    final picked = await showModalBottomSheet<Region>(
+      context: context,
+      isScrollControlled: true, // 키보드가 올라와도 결과가 가려지지 않게
+      backgroundColor: AppThemeScope.of(context).surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) => SearchSheet(searcher: searcher, scratched: _scratched),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _selected = picked);
+    await _openRegion(picked, d);
+  }
+
   /// 지역 탭 → 소개 팝업 → "지역 긁기" → 전용 긁기 화면 → 완료 시 컬러 채움.
   Future<void> _openRegion(Region r, MapData d) async {
     final go = await showModalBottomSheet<bool>(
@@ -438,7 +465,21 @@ class _MapSpikePageState extends State<MapSpikePage>
                 ? const Center(child: CircularProgressIndicator())
                 : Column(
                     children: [
-                      Expanded(child: _buildMap(d)),
+                      Expanded(
+                        child: Stack(
+                          children: [
+                            Positioned.fill(child: _buildMap(d)),
+                            // 검색은 지도 위에 얹는다. 지도를 가리지 않게
+                            // 상단에 얇게 두고, 누르면 시트가 열린다.
+                            Positioned(
+                              left: 12,
+                              right: 12,
+                              top: 10,
+                              child: _SearchBar(onTap: () => _openSearch(d)),
+                            ),
+                          ],
+                        ),
+                      ),
                       _StatsBar(
                         stats: _stats,
                         data: d,
@@ -809,16 +850,18 @@ class _StatsBar extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                // `Row` 로 두면 좁은 화면에서 넘친다. 수치 길이가 상황마다
+                // 달라지므로 줄바꿈되게 둔다.
+                Wrap(
+                  spacing: 10,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Text('${stats.measuredFps.toStringAsFixed(0)} fps',
                         style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: ok ? t.good : t.bad)),
-                    const SizedBox(width: 8),
                     Text('여유 ${stats.headroomFps.toStringAsFixed(0)}'),
-                    const SizedBox(width: 10),
                     Text('예산 초과 ${(stats.jankRatio * 100).toStringAsFixed(0)}%'
                         ' · ${stats.frames}프레임'),
                   ],
@@ -838,6 +881,41 @@ class _StatsBar extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// 지도 위에 얹는 검색 진입점. 실제 입력은 시트에서 받는다.
+///
+/// 여기에 `TextField` 를 두지 않는 이유는 **키보드가 지도를 반쯤 덮기** 때문이다.
+/// 시트로 열면 결과 목록과 키보드가 한 화면에 정리된다.
+class _SearchBar extends StatelessWidget {
+  const _SearchBar({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppThemeScope.of(context);
+    return Material(
+      color: t.surface,
+      elevation: 2,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          child: Row(
+            children: [
+              Icon(Icons.search, size: 20, color: t.onSurfaceMuted),
+              const SizedBox(width: 10),
+              Text('지역 검색',
+                  style: TextStyle(color: t.onSurfaceFaint, fontSize: 14)),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
