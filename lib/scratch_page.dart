@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
+import 'collection.dart';
 import 'frame_stats.dart';
 import 'island_layout.dart';
 import 'map_data.dart';
@@ -16,27 +18,44 @@ import 'scratch_progress.dart';
 /// - InteractiveViewer 의 한 손가락 드래그(이동)와 긁기 제스처가 충돌한다.
 /// - 작은 도심 구도 화면 가득 확대되므로 셀 크기 문제가 이 화면에서는 사라진다.
 ///
-/// 긁기 완료 시 `Navigator.pop(true)` 로 닫힌다. 중간에 나가면 진행은 버려진다
-/// (부분 진행 저장은 S2 MVP 본개발 범위).
+/// **완료는 화면을 닫을 때가 아니라 임계치에 도달한 순간 확정된다.**
+///
+/// 예전에는 `Navigator.pop(true)` 가 커밋 신호였다. 그러면 완료 연출을 보고
+/// 버튼을 누르기 전까지가 통째로 손실 창이 되어, 그 사이 앱이 죽으면
+/// "긁었는데 기록이 안 남는다" 가 된다(Codex 15회차). 지금은 도달 즉시
+/// [onCollected] 로 저장을 요청하고, **성공해야** 완료로 확정한다.
+///
+/// 중간에 나가면 진행은 버려진다 (부분 진행 저장은 M1 범위 밖).
 class ScratchPage extends StatefulWidget {
   const ScratchPage({
     super.key,
     required this.region,
     required this.sidoName,
+    required this.onCollected,
   });
 
   final Region region;
   final String sidoName;
 
+  /// 임계치 도달 즉시 호출된다. **실패하면 예외를 던져야 한다** —
+  /// 이 화면이 재시도 UI 를 띄운다.
+  final Future<void> Function(CollectedUnit unit) onCollected;
+
   @override
   State<ScratchPage> createState() => _ScratchPageState();
 }
+
+/// 저장 진행 상태. `_done`(다 긁었다)과 구분한다.
+enum _SaveState { idle, saving, saved, failed }
 
 class _ScratchPageState extends State<ScratchPage>
     with SingleTickerProviderStateMixin {
   /// 이 비율 이상 긁으면 나머지를 자동 완성한다.
   /// 실물 복권도 구석까지 긁는 사람은 없다 — 끝까지 강요하면 답답해진다.
-  static const threshold = 0.65;
+  ///
+  /// **2026-08-14 사용자 결정으로 0.65 → 0.80 으로 올렸다.** 촉감 확인("좋다")은
+  /// 0.65 기준이었으므로 실기기에서 다시 판단해야 한다.
+  static const threshold = 0.80;
 
   /// 손가락 지우개 반지름 (논리 px)
   static const brush = 26.0;
@@ -57,7 +76,21 @@ class _ScratchPageState extends State<ScratchPage>
   int _panEvents = 0;
   int _panMicros = 0;
 
+  /// 저장 상태. `_done` 은 "다 긁었다", 이건 "기록됐다" 로 서로 다르다.
+  _SaveState _save = _SaveState.idle;
+  Object? _saveError;
+
+  /// **임계치에 도달한 순간 한 번만** 잡는다. 재시도해도 갱신하지 않는다 —
+  /// 그러면 수집 시각이 "실제로 긁은 때" 가 아니라 "저장에 성공한 때" 가 된다.
+  CollectedUnit? _pending;
+
   double get _ratio => _progress?.ratio ?? 0;
+
+  /// 화면을 떠나도 되는가.
+  ///
+  /// 아직 다 긁지 않았으면 언제든 나갈 수 있다(진행은 원래 버려진다).
+  /// **다 긁었으면 기록된 뒤에만** 나갈 수 있다.
+  bool get _canLeave => !_done || _save == _SaveState.saved;
 
   @override
   void initState() {
@@ -190,6 +223,16 @@ class _ScratchPageState extends State<ScratchPage>
   void _finish() {
     _done = true;
     _fade.forward();
+
+    // 수집 시각은 여기서 한 번만 잡는다.
+    final now = DateTime.now();
+    _pending = CollectedUnit(
+      scratchUnitId: widget.region.scratchUnitId,
+      collectedAtUtc: now.toUtc(),
+      utcOffsetMinutes: now.timeZoneOffset.inMinutes,
+    );
+    unawaited(_saveNow());
+
     final avg = _panEvents == 0 ? 0 : _panMicros ~/ _panEvents;
     debugPrint('[SCRATCH] 완료 ${widget.region.scratchUnitId} ${widget.region.name} '
         'ratio=${(_ratio * 100).toStringAsFixed(0)}% '
@@ -201,10 +244,105 @@ class _ScratchPageState extends State<ScratchPage>
         '구간=${_stats.elapsedSeconds.toStringAsFixed(1)}s');
   }
 
+  /// 하단은 **저장 상태**를 보여준다. 다 긁었다는 것과 기록됐다는 것은 다르다.
+  Widget _buildFooter(AppTheme t) {
+    if (!_done) {
+      return Text(
+        '손가락으로 문질러 긁어보세요',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: t.onSurfaceFaint, fontSize: 13),
+      );
+    }
+    switch (_save) {
+      case _SaveState.saving:
+      case _SaveState.idle:
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: t.onSurfaceFaint),
+            ),
+            const SizedBox(width: 10),
+            Text('기록하는 중…',
+                style: TextStyle(color: t.onSurfaceMuted, fontSize: 13)),
+          ],
+        );
+      case _SaveState.failed:
+        return Column(
+          children: [
+            Text(
+              '기록하지 못했습니다. 다시 시도해 주세요.'
+              '${_saveError == null ? '' : '\n($_saveError)'}',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: t.onSurface, fontSize: 13),
+            ),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: _saveNow,
+              child: const Text('다시 시도'),
+            ),
+          ],
+        );
+      case _SaveState.saved:
+        return FilledButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('지도로 돌아가기'),
+        );
+    }
+  }
+
+  Future<void> _saveNow() async {
+    final unit = _pending;
+    if (unit == null || _save == _SaveState.saving) return;
+    setState(() {
+      _save = _SaveState.saving;
+      _saveError = null;
+    });
+    try {
+      await widget.onCollected(unit);
+      if (!mounted) return;
+      setState(() => _save = _SaveState.saved);
+      debugPrint('[SCRATCH] 저장 완료 ${unit.scratchUnitId}');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _save = _SaveState.failed;
+        _saveError = e;
+      });
+      debugPrint('[SCRATCH] 저장 실패 ${unit.scratchUnitId}: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final color = kSidoColors[widget.region.sido];
     final t = AppThemeScope.of(context);
+    // **다 긁었으면 기록되기 전에는 나가지 못하게 한다.**
+    //
+    // 저장 중만 막았더니 **실패 상태에서 뒤로가기와 X 로 빠져나갈 수 있었다**
+    // — 긁은 것이 그대로 버려진다(Codex 16회차). 완료 이후의 이탈은
+    // `saved` 일 때만 허용한다.
+    return PopScope(
+      canPop: _canLeave,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text(_save == _SaveState.saving
+                    ? '기록하는 중입니다. 잠시만요.'
+                    : '아직 기록되지 않았습니다. 다시 시도해 주세요.'),
+                duration: const Duration(seconds: 3)),
+          );
+        }
+      },
+      child: _buildBody(context, color, t),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, Color color, AppTheme t) {
     return Scaffold(
       backgroundColor: t.background,
       body: SafeArea(
@@ -237,7 +375,9 @@ class _ScratchPageState extends State<ScratchPage>
                   ),
                   const Spacer(),
                   IconButton(
-                    onPressed: () => Navigator.of(context).pop(_done),
+                    // 기록되기 전에는 닫기도 막는다. `PopScope` 와 같은 이유다.
+                    onPressed:
+                        _canLeave ? () => Navigator.of(context).pop() : null,
                     icon: Icon(Icons.close, color: t.onSurfaceFaint),
                   ),
                 ],
@@ -318,17 +458,7 @@ class _ScratchPageState extends State<ScratchPage>
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    child: _done
-                        ? FilledButton(
-                            onPressed: () => Navigator.of(context).pop(true),
-                            child: const Text('지도로 돌아가기'),
-                          )
-                        : Text(
-                            '손가락으로 문질러 긁어보세요',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                color: t.onSurfaceFaint, fontSize: 13),
-                          ),
+                    child: _buildFooter(t),
                   ),
                 ],
               ),

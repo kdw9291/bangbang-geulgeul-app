@@ -2,9 +2,12 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
+import 'collection.dart';
+import 'collection_store.dart';
 import 'frame_stats.dart';
 import 'hit_test.dart';
 import 'map_data.dart';
@@ -14,6 +17,18 @@ import 'scratch_page.dart';
 import 'sea_background.dart';
 
 void main() => runApp(const MapScratchApp());
+
+/// 저장소를 아예 열지 못했을 때 쓰는 자리 채움.
+/// 읽기·쓰기 모두 실패시켜 **조용히 빈 상태로 덮어쓰는 일을 막는다.**
+class _UnavailableStorage implements CollectionStorage {
+  @override
+  Future<String?> read() => Future.error(StateError('저장소를 열지 못했다'));
+  @override
+  Future<void> writeAtomically(String contents) =>
+      Future.error(StateError('저장소를 열지 못했다'));
+  @override
+  Future<String> quarantine() => Future.error(StateError('저장소를 열지 못했다'));
+}
 
 class MapScratchApp extends StatefulWidget {
   const MapScratchApp({super.key});
@@ -84,8 +99,25 @@ class _MapSpikePageState extends State<MapSpikePage>
   /// **제자리에서 수정하지 않는다.** painter 가 이 Set 을 그대로 들고 있어서,
   /// `add`/`clear` 로 고치면 이전 painter 와 새 painter 가 같은 객체를 보게 되고
   /// `shouldRepaint` 가 변경을 감지하지 못한다. 항상 새 스냅샷으로 교체한다.
+  ///
+  /// **원본이 아니라 파생 상태다.** 원본은 [_store] 의 `CollectionSnapshot` 이며
+  /// 수집일시·메모·현재 카탈로그에 없는 ID 까지 들고 있다. 여기에는 지금 지도에
+  /// 그릴 수 있는 것만 내려온다.
   Set<String> _scratched = const <String>{};
   final _cache = MapPictureCache();
+
+  /// 수집 기록의 원본. 저장에 성공해야 스냅샷이 바뀐다.
+  CollectionStore? _store;
+
+  /// 저장 로드 결과. 쓸 수 없는 상태면 긁기 화면 진입을 막는다.
+  CollectionLoadResult? _loadResult;
+
+  /// **데모용 임시 채움.** 실제 기록과 분리한다.
+  ///
+  /// 예전에는 `_scratched` 를 직접 60개로 바꿨는데, 영구 저장이 붙으면
+  /// 가짜 기록이 그대로 남는다(Codex 15회차). 이제 화면에만 얹고
+  /// 저장은 건드리지 않으며, 릴리스 빌드에는 버튼 자체가 없다.
+  bool _demoFill = false;
 
   /// 바다 배경. 은박 색도 여기서 따라온다 — 배경이 밝아지면 은박이 함께
   /// 조정되지 않으면 미수집 지역이 배경에 묻힌다.
@@ -114,20 +146,60 @@ class _MapSpikePageState extends State<MapSpikePage>
   /// 로그만으로 프레임 성능을 측정할 수 있다.
   static const bool _autoBench = bool.fromEnvironment('AUTOBENCH');
 
+  /// 지도와 수집 기록을 **둘 다 읽은 뒤에야** 지도를 보여준다.
+  ///
+  /// 지도만 먼저 띄우면 ① 잠깐 전부 미수집으로 보이고 ② 그 사이 사용자가 새
+  /// 지역을 완료할 수 있으며 ③ 늦게 도착한 로드가 그 결과를 덮어쓴다
+  /// (Codex 15회차). 두 로드는 병렬로 돌리되 표시는 함께 연다.
   Future<void> _load() async {
     try {
+      final storeFuture = _openStore();
       final d = await MapData.load();
+      final (store, result) = await storeFuture;
       if (!mounted) return;
       setState(() {
         _data = d;
         _hitTester = RegionHitTester(d.regions);
+        _store = store;
+        _loadResult = result;
+        _scratched =
+            result.snapshot.idsIn(d.regions.map((r) => r.scratchUnitId));
       });
       debugPrint('[BENCH] 로딩 ${d.loadMs}ms '
           '(읽기 ${d.readMs}ms · JSON ${d.decodeMs}ms · Path ${d.pathMs}ms) · '
           '지역 ${d.regions.length}개 · 정점 ${d.vertexCount}개');
+      final unknown =
+          result.snapshot.unknownIds(d.regions.map((r) => r.scratchUnitId));
+      debugPrint('[STORE] ${result.status.name} · 수집 ${_scratched.length}개'
+          '${unknown.isEmpty ? '' : ' · 알 수 없는 ID ${unknown.length}개(보존)'}'
+          '${result.detail == null ? '' : ' · ${result.detail}'}');
+      // **조용히 넘어가지 않는다.** 손상으로 빈 상태가 됐는데 알리지 않으면
+      // 사용자는 기록이 사라진 것을 모른 채 새로 긁기 시작한다(Codex 16회차).
+      if (result.status != CollectionLoadStatus.ok) {
+        WidgetsBinding.instance
+            .addPostFrameCallback((_) => _showStoreProblem(result));
+      }
       if (_autoBench) _runAutoBench();
     } catch (e) {
       if (mounted) setState(() => _error = e);
+    }
+  }
+
+  /// 저장소 열기는 실패해도 **앱을 못 켜게 만들지 않는다.**
+  /// 지도는 보여주되 쓸 수 없는 상태로 두고 사용자에게 알린다.
+  Future<(CollectionStore, CollectionLoadResult)> _openStore() async {
+    try {
+      final storage = await FileCollectionStorage.open();
+      final store = CollectionStore(storage);
+      return (store, await store.load());
+    } catch (e) {
+      final store = CollectionStore(_UnavailableStorage());
+      return (
+        store,
+        CollectionLoadResult(
+            CollectionLoadStatus.readFailed, CollectionSnapshot.empty,
+            detail: '$e')
+      );
     }
   }
 
@@ -236,16 +308,64 @@ class _MapSpikePageState extends State<MapSpikePage>
       ),
     );
     if (go != true || !mounted) return;
-    final done = await Navigator.of(context).push<bool>(
+
+    // **쓸 수 없는 상태면 긁게 두지 않는다.** 긁고 나서 저장이 안 되면
+    // 사용자가 한 일이 통째로 버려진다. 먼저 왜 안 되는지 알린다.
+    final result = _loadResult;
+    if (_store == null || result == null || !result.writable) {
+      _showStoreProblem(result);
+      return;
+    }
+
+    await Navigator.of(context).push<void>(
       MaterialPageRoute(
-        builder: (_) => ScratchPage(region: r, sidoName: d.sidoNames[r.sido]),
+        builder: (_) => ScratchPage(
+          region: r,
+          sidoName: d.sidoNames[r.sido],
+          onCollected: _commitCollected,
+        ),
       ),
     );
-    if (done == true && mounted) {
-      setState(() => _scratched = {..._scratched, r.scratchUnitId});
-      debugPrint('[SCRATCH] 지도 반영 ${r.scratchUnitId} · '
-          '수집 ${_scratched.length}/${_data!.regions.length}');
+  }
+
+  void _showStoreProblem(CollectionLoadResult? r) {
+    if (!mounted) return;
+    final msg = switch (r?.status) {
+      CollectionLoadStatus.quarantined =>
+        '저장된 수집 기록을 읽을 수 없어 빈 상태로 시작합니다.\n'
+            '원본 파일은 지우지 않고 따로 보관했습니다.',
+      CollectionLoadStatus.unsupportedVersion =>
+        '더 새로운 버전이 만든 기록이 있습니다. 앱을 업데이트한 뒤 사용해 주세요.\n'
+            '기존 기록을 지우지 않기 위해 저장을 멈춥니다.',
+      _ => '수집 기록을 불러오지 못했습니다. 긁기를 시작할 수 없습니다.\n'
+          '앱을 다시 실행해 보세요.',
+    };
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), duration: const Duration(seconds: 8)),
+    );
+  }
+
+  /// 긁기 화면이 **완료 도달 즉시** 부른다. 화면을 닫을 때가 아니다.
+  ///
+  /// 예전에는 `Navigator.pop(true)` 가 커밋 신호였는데, 그러면 완료 연출을 보고
+  /// 버튼을 누르기 전까지가 통째로 손실 창이 된다 — 그 사이 앱이 죽으면
+  /// "긁었는데 기록이 안 남는다" 가 된다(Codex 15회차).
+  ///
+  /// 저장에 실패하면 예외를 그대로 올려보내 긁기 화면이 재시도를 띄우게 한다.
+  /// **성공해야 지도에 반영한다.**
+  Future<void> _commitCollected(CollectedUnit unit) async {
+    final store = _store;
+    final d = _data;
+    if (store == null || d == null) {
+      throw StateError('저장소가 아직 준비되지 않았다');
     }
+    final next = await store.collect(unit);
+    if (!mounted) return;
+    setState(() {
+      _scratched = next.idsIn(d.regions.map((r) => r.scratchUnitId));
+    });
+    debugPrint('[SCRATCH] 지도 반영 ${unit.scratchUnitId} · '
+        '수집 ${_scratched.length}/${d.regions.length}');
   }
 
   void _toggleBenchmark() {
@@ -314,11 +434,15 @@ class _MapSpikePageState extends State<MapSpikePage>
                             ..scaleByDouble(3, 3, 1, 1);
                           debugPrint('[HIT] 배율 3배 고정');
                         },
-                        onFillDemo: () => setState(() {
-                          _scratched = _scratched.isEmpty
-                              ? d.regions.take(60).map((r) => r.scratchUnitId).toSet()
-                              : const <String>{};
-                        }),
+                        // **실제 기록을 건드리지 않는다.** 화면에만 얹는 표시이며
+                        // 저장을 호출하지 않는다. 릴리스 빌드에는 버튼이 없다.
+                        //
+                        // `kDebugMode` 가 아니라 `!kReleaseMode` 인 이유는
+                        // **성능 측정을 profile 에서 하기 때문**이다. `kDebugMode`
+                        // 로 막았더니 정작 필요한 곳에서 버튼이 사라졌다.
+                        onFillDemo: kReleaseMode
+                            ? null
+                            : () => setState(() => _demoFill = !_demoFill),
                       ),
                     ],
                   ),
@@ -332,10 +456,18 @@ class _MapSpikePageState extends State<MapSpikePage>
         final aspect = d.size.height / d.size.width;
         var w = c.maxWidth;
         if (w * aspect > c.maxHeight) w = c.maxHeight / aspect;
+        // 데모 채움은 **그릴 때만** 얹는다. `_scratched` 자체는 건드리지 않으므로
+        // 저장에도, 팝업의 수집 여부 판정에도 섞이지 않는다.
+        final painted = _demoFill
+            ? {
+                ..._scratched,
+                ...d.regions.take(60).map((r) => r.scratchUnitId),
+              }
+            : _scratched;
         Widget map = CustomPaint(
           painter: KoreaMapPainter(
             data: d,
-            scratched: _scratched,
+            scratched: painted,
             showSidoLines: _sidoLines,
             sea: _sea,
             seaCache: _seaCache,
@@ -695,7 +827,10 @@ class _Controls extends StatelessWidget {
 
   final bool benchmarking;
   final bool sidoLines;
-  final VoidCallback onBenchmark, onSidoLines, onReset, onFillDemo, onZoom3x;
+  final VoidCallback onBenchmark, onSidoLines, onReset, onZoom3x;
+
+  /// 릴리스 빌드에서는 `null` 이라 버튼 자체가 나오지 않는다.
+  final VoidCallback? onFillDemo;
 
   @override
   Widget build(BuildContext context) {
@@ -714,7 +849,9 @@ class _Controls extends StatelessWidget {
             onPressed: onSidoLines,
             child: Text(sidoLines ? '시도선 끄기' : '시도선 켜기'),
           ),
-          OutlinedButton(onPressed: onFillDemo, child: const Text('60칸 채우기')),
+          if (onFillDemo != null)
+            OutlinedButton(
+                onPressed: onFillDemo, child: const Text('60칸 채우기')),
           // adb 로는 핀치 줌을 넣을 수 없어, 확대 상태의 좌표 변환을 검증하려면
           // 배율을 코드로 고정하는 수단이 필요하다.
           OutlinedButton(onPressed: onZoom3x, child: const Text('3배 확대')),
