@@ -13,10 +13,12 @@ import 'hit_test.dart';
 import 'map_data.dart';
 import 'map_painter.dart';
 import 'region_art.dart';
+import 'region_description.dart';
 import 'region_search.dart';
 import 'scratch_page.dart';
 import 'search_sheet.dart';
 import 'sea_background.dart';
+import 'sido_progress.dart';
 
 void main() => runApp(const MapScratchApp());
 
@@ -352,6 +354,11 @@ class _MapSpikePageState extends State<MapSpikePage>
   Future<void> _openRegion(Region r, MapData d) async {
     final go = await showModalBottomSheet<bool>(
       context: context,
+      // **기본값은 화면의 9/16 까지만 쓴다.** S25(360×780) 기준 약 439px 인데
+      // 아트 150 + 헤더 + 설명 + 진행률 + 버튼을 더하면 그걸 넘는다.
+      // 그대로 두면 스크롤은 되지만 **버튼이 처음부터 화면 밖**이다(Codex 20회차).
+      isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: AppThemeScope.of(context).surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
@@ -359,7 +366,9 @@ class _MapSpikePageState extends State<MapSpikePage>
       builder: (ctx) => _RegionSheet(
         region: r,
         sidoName: d.sidoNames[r.sido],
-        scratched: _scratched.contains(r.scratchUnitId),
+        // 수집 기록 원본에서 꺼낸다. 화면용 `Set` 에는 수집일시·메모가 없다.
+        collected: _store?.snapshot[r.scratchUnitId],
+        progress: sidoProgressOf(d, _scratched, r.sido),
       ),
     );
     if (go != true || !mounted) return;
@@ -617,18 +626,33 @@ class _MapSpikePageState extends State<MapSpikePage>
   }
 }
 
-/// 지역 소개 팝업. 소개 글은 아직 준비 전이라 자리만 잡아둔다 —
-/// 실제 문구와 랜드마크는 T6 아트 전략에서 채운다.
+/// 지역 소개 팝업.
+///
+/// **수집 전과 후가 다른 화면이다.**
+/// - 수집 전: 아트를 은박으로 가리고 **랜드마크 이름도 설명도 내보내지 않는다.**
+///   "가리고 긁을 때 공개" 결정의 핵심이라 이름 한 단어도 힌트가 된다
+/// - 수집 후: 아트를 공개하고 설명·수집일·메모·시도 진행률을 함께 보여준다 —
+///   상태 통보가 아니라 성취 표시로
+///
+/// 양쪽 모두 **시도 진행률**을 넣는다. 232번 반복되는 고정 문구만 두면
+/// 수집 앱으로서 심심하고, 다음 목표도 보이지 않는다.
 class _RegionSheet extends StatelessWidget {
   const _RegionSheet({
     required this.region,
     required this.sidoName,
-    required this.scratched,
+    required this.collected,
+    required this.progress,
   });
 
   final Region region;
   final String sidoName;
-  final bool scratched;
+
+  /// 수집 기록. `null` 이면 아직 안 긁은 지역이다.
+  final CollectedUnit? collected;
+
+  final SidoProgress progress;
+
+  bool get scratched => collected != null;
 
   @override
   Widget build(BuildContext context) {
@@ -637,10 +661,13 @@ class _RegionSheet extends StatelessWidget {
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        // **세로가 짧은 기기에서 넘치지 않게 스크롤을 준다.**
+        // 800×600 테스트 화면에서 30px 넘치는 것을 M3 에서 발견했다.
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Center(
               child: Container(
                 width: 36,
@@ -684,16 +711,7 @@ class _RegionSheet extends StatelessWidget {
             const SizedBox(height: 14),
             _RegionArtCard(region: region, color: color, revealed: scratched),
             const SizedBox(height: 14),
-            Text(
-              scratched
-                  ? _artName(region) == null
-                      ? '이미 수집한 지역이에요.'
-                      : '이미 수집한 지역이에요. ${_artName(region)}.'
-                  : '복권처럼 긁어서 이 지역을 수집해 보세요. '
-                      '무엇이 나올지는 긁어야 알 수 있어요.',
-              style: TextStyle(
-                  color: t.onSurfaceMuted, fontSize: 14, height: 1.5),
-            ),
+            ..._body(t, color),
             const SizedBox(height: 18),
             SizedBox(
               width: double.infinity,
@@ -708,12 +726,96 @@ class _RegionSheet extends StatelessWidget {
                       child: const Text('지역 긁기'),
                     ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+
+  List<Widget> _body(AppTheme t, Color color) {
+    final body = TextStyle(color: t.onSurfaceMuted, fontSize: 14, height: 1.5);
+    final unit = collected;
+
+    if (unit == null) {
+      // **여기에 랜드마크 이름이나 설명을 넣지 않는다.**
+      return [
+        Text(
+          '복권처럼 긁어서 이 지역을 수집해 보세요. '
+          '무엇이 나올지는 긁어야 알 수 있어요.',
+          style: body,
+        ),
+        const SizedBox(height: 14),
+        _ProgressLine(progress: progress, color: color),
+      ];
+    }
+
+    return [
+      Text(descriptionFor(region.scratchUnitId), style: body),
+      const SizedBox(height: 10),
+      Text(
+        '${_formatDate(unit.localDate)}에 수집했어요.',
+        style: TextStyle(color: t.onSurfaceFaint, fontSize: 13),
+      ),
+      if (unit.memo != null && unit.memo!.trim().isNotEmpty) ...[
+        const SizedBox(height: 10),
+        Container(
+          key: const Key('regionMemo'),
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: t.surfaceVariant,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(unit.memo!, style: body),
+        ),
+      ],
+      const SizedBox(height: 14),
+      _ProgressLine(progress: progress, color: color),
+    ];
+  }
+
+  /// 수집 **당시** 사용자의 날짜다. 지금 기기의 시간대로 다시 풀지 않는다.
+  static String _formatDate(DateTime d) => '${d.year}년 ${d.month}월 ${d.day}일';
 }
+
+/// 시도 진행률 한 줄. 수집 전후 모두에 들어간다.
+class _ProgressLine extends StatelessWidget {
+  const _ProgressLine({required this.progress, required this.color});
+
+  final SidoProgress progress;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppThemeScope.of(context);
+    // **통합 단위는 1/1 이라 "남은 곳" 이 늘 0 이다.** 분수만 보여주면
+    // 이상해 보이므로 끝난 시도는 말로 알린다.
+    final label = progress.complete
+        ? '${progress.sidoName} 전부 모았어요!'
+        : '${progress.sidoName} ${progress.collected}/${progress.total} · '
+            '${progress.remaining}곳 남았어요';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(99),
+          child: LinearProgressIndicator(
+            value: progress.ratio,
+            minHeight: 6,
+            backgroundColor: t.surfaceVariant,
+            valueColor: AlwaysStoppedAnimation(color),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(label,
+            style: TextStyle(color: t.onSurfaceMuted, fontSize: 13)),
+      ],
+    );
+  }
+}
+
 
 /// 팝업의 아트 자리. 소개 글이 비어 있던 곳이다.
 ///
@@ -825,9 +927,6 @@ class _ArtCardPainter extends CustomPainter {
       old.foilLight != foilLight ||
       old.foilDark != foilDark;
 }
-
-/// 팝업 문구에 쓸 아트 이름. 랜드마크면 소재 이름, 카테고리면 `null`.
-String? _artName(Region region) => kLandmarkArt[region.scratchUnitId]?.name;
 
 class _StatsBar extends StatelessWidget {
   const _StatsBar({required this.stats, required this.data, this.selected});
