@@ -30,8 +30,22 @@ class _UnavailableStorage implements CollectionStorage {
   Future<String> quarantine() => Future.error(StateError('저장소를 열지 못했다'));
 }
 
+/// 지도 에셋을 읽는다. 테스트가 **타이밍을 제어**하려고 갈아 끼운다.
+typedef MapLoader = Future<MapData> Function();
+
+/// 수집 기록 저장소를 열고 로드한다. 테스트가 정상·손상·실패 상태를 만든다.
+typedef StoreOpener = Future<(CollectionStore, CollectionLoadResult)> Function();
+
 class MapScratchApp extends StatefulWidget {
-  const MapScratchApp({super.key});
+  const MapScratchApp({super.key, this.mapLoader, this.storeOpener});
+
+  /// 둘 다 `null` 이면 실제 에셋과 실제 파일 저장소를 쓴다.
+  ///
+  /// **주입 지점을 만든 이유**: `path_provider` 는 `flutter test` 에서
+  /// `MissingPluginException` 이라 저장소가 늘 `readFailed` 로 떨어졌다.
+  /// 그러면 **정상 배선을 테스트가 한 번도 지나가지 않는다**(Codex 16회차).
+  final MapLoader? mapLoader;
+  final StoreOpener? storeOpener;
 
   @override
   State<MapScratchApp> createState() => _MapScratchAppState();
@@ -63,7 +77,11 @@ class _MapScratchAppState extends State<MapScratchApp> {
       // **`home` 이 아니라 `builder` 에서 감싼다.** 팝업은 `showModalBottomSheet`
       // 로 Navigator 위에 뜨므로 페이지 아래에 둔 Scope 를 보지 못한다.
       builder: (context, child) => AppThemeScope(theme: t, child: child!),
-      home: MapSpikePage(sea: _sea),
+      home: MapSpikePage(
+        sea: _sea,
+        mapLoader: widget.mapLoader,
+        storeOpener: widget.storeOpener,
+      ),
     );
   }
 }
@@ -71,9 +89,16 @@ class _MapScratchAppState extends State<MapScratchApp> {
 /// T2 지도 렌더 스파이크.
 /// 목적은 두 가지다 — 232개 폴리곤이 렌더되는가, 확대·이동 중 60fps 가 유지되는가.
 class MapSpikePage extends StatefulWidget {
-  const MapSpikePage({super.key, required this.sea});
+  const MapSpikePage({
+    super.key,
+    required this.sea,
+    this.mapLoader,
+    this.storeOpener,
+  });
 
   final SeaPalette sea;
+  final MapLoader? mapLoader;
+  final StoreOpener? storeOpener;
 
   @override
   State<MapSpikePage> createState() => _MapSpikePageState();
@@ -153,8 +178,11 @@ class _MapSpikePageState extends State<MapSpikePage>
   /// (Codex 15회차). 두 로드는 병렬로 돌리되 표시는 함께 연다.
   Future<void> _load() async {
     try {
-      final storeFuture = _openStore();
-      final d = await MapData.load();
+      // **둘을 함께 시작하고 함께 기다린다.** 어느 쪽이 먼저 끝나도
+      // 둘 다 결정되기 전에는 지도를 열지 않는다.
+      final storeFuture = (widget.storeOpener ?? _openStore)();
+      final mapFuture = (widget.mapLoader ?? MapData.load)();
+      final d = await mapFuture;
       final (store, result) = await storeFuture;
       if (!mounted) return;
       setState(() {
