@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -78,7 +78,6 @@ class _ScratchPageState extends State<ScratchPage>
 
   /// 저장 상태. `_done` 은 "다 긁었다", 이건 "기록됐다" 로 서로 다르다.
   _SaveState _save = _SaveState.idle;
-  Object? _saveError;
 
   /// **임계치에 도달한 순간 한 번만** 잡는다. 재시도해도 갱신하지 않는다 —
   /// 그러면 수집 시각이 "실제로 긁은 때" 가 아니라 "저장에 성공한 때" 가 된다.
@@ -244,62 +243,100 @@ class _ScratchPageState extends State<ScratchPage>
         '구간=${_stats.elapsedSeconds.toStringAsFixed(1)}s');
   }
 
+  /// 하단 영역의 최소 높이.
+  static const _footerMinHeight = 48.0;
+
   /// 하단은 **저장 상태**를 보여준다. 다 긁었다는 것과 기록됐다는 것은 다르다.
+  ///
+  /// ## 높이가 상태에 따라 달라지면 안 된다
+  ///
+  /// 달라지면 위쪽 `Expanded` 가 줄었다 늘었다 하고, `LayoutBuilder` 가 새 크기를
+  /// 보고 `_prepare()` 를 다시 돌린다. 그 안의 `_strokes.clear()` 가 긁은 자취를
+  /// 버린다 (2026-08-14 실기기에서 발견).
+  ///
+  /// **고정 픽셀로 막지 않는다.** 처음에는 `height: 48` 로 못 박았는데, 글꼴 배율을
+  /// 키운 기기에서는 그 안에 글자가 안 들어가 잘리거나 넘친다(Codex 19회차).
+  /// 대신 `IndexedStack` 으로 **모든 상태를 함께 레이아웃**해 가장 높은 것에
+  /// 맞추고, 최소 높이만 둔다. 글꼴 배율이 바뀌면 footer 전체가 한 번 커질 뿐
+  /// 상태 전환으로는 변하지 않는다.
   Widget _buildFooter(AppTheme t) {
-    if (!_done) {
-      return Text(
-        '손가락으로 문질러 긁어보세요',
-        textAlign: TextAlign.center,
-        style: TextStyle(color: t.onSurfaceFaint, fontSize: 13),
+    final states = [
+      _hintFooter(t),
+      _savingFooter(t),
+      _failedFooter(t),
+      _savedFooter(t),
+    ];
+    final index = !_done
+        ? 0
+        : switch (_save) {
+            _SaveState.idle || _SaveState.saving => 1,
+            _SaveState.failed => 2,
+            _SaveState.saved => 3,
+          };
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: _footerMinHeight),
+      child: IndexedStack(
+        index: index,
+        alignment: Alignment.center,
+        children: [
+          // 보이지 않는 상태의 스피너가 계속 프레임을 만들지 않게 막는다.
+          for (var i = 0; i < states.length; i++)
+            TickerMode(enabled: i == index, child: states[i]),
+        ],
+      ),
+    );
+  }
+
+  Widget _hintFooter(AppTheme t) => Center(
+        child: Text(
+          '손가락으로 문질러 긁어보세요',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: t.onSurfaceFaint, fontSize: 13),
+        ),
       );
-    }
-    switch (_save) {
-      case _SaveState.saving:
-      case _SaveState.idle:
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                  strokeWidth: 2, color: t.onSurfaceFaint),
-            ),
-            const SizedBox(width: 10),
-            Text('기록하는 중…',
+
+  Widget _savingFooter(AppTheme t) => Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: t.onSurfaceFaint),
+          ),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Text('기록하는 중…',
                 style: TextStyle(color: t.onSurfaceMuted, fontSize: 13)),
-          ],
-        );
-      case _SaveState.failed:
-        return Column(
-          children: [
-            Text(
-              '기록하지 못했습니다. 다시 시도해 주세요.'
-              '${_saveError == null ? '' : '\n($_saveError)'}',
-              textAlign: TextAlign.center,
+          ),
+        ],
+      );
+
+  /// 자세한 오류는 화면이 아니라 로그로 남긴다.
+  Widget _failedFooter(AppTheme t) => Row(
+        children: [
+          Expanded(
+            child: Text(
+              '기록하지 못했습니다.',
               style: TextStyle(color: t.onSurface, fontSize: 13),
             ),
-            const SizedBox(height: 8),
-            FilledButton(
-              onPressed: _saveNow,
-              child: const Text('다시 시도'),
-            ),
-          ],
-        );
-      case _SaveState.saved:
-        return FilledButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('지도로 돌아가기'),
-        );
-    }
-  }
+          ),
+          const SizedBox(width: 8),
+          FilledButton(onPressed: _saveNow, child: const Text('다시 시도')),
+        ],
+      );
+
+  Widget _savedFooter(AppTheme t) => FilledButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('지도로 돌아가기'),
+      );
 
   Future<void> _saveNow() async {
     final unit = _pending;
     if (unit == null || _save == _SaveState.saving) return;
     setState(() {
       _save = _SaveState.saving;
-      _saveError = null;
     });
     try {
       await widget.onCollected(unit);
@@ -310,7 +347,6 @@ class _ScratchPageState extends State<ScratchPage>
       if (!mounted) return;
       setState(() {
         _save = _SaveState.failed;
-        _saveError = e;
       });
       debugPrint('[SCRATCH] 저장 실패 ${unit.scratchUnitId}: $e');
     }
@@ -318,7 +354,7 @@ class _ScratchPageState extends State<ScratchPage>
 
   @override
   Widget build(BuildContext context) {
-    final color = kSidoColors[widget.region.sido];
+    final color = sidoColorOf(widget.sidoName);
     final t = AppThemeScope.of(context);
     // **다 긁었으면 기록되기 전에는 나가지 못하게 한다.**
     //
@@ -400,6 +436,9 @@ class _ScratchPageState extends State<ScratchPage>
                     );
                   }
                   return GestureDetector(
+                    // 완료 전후로 이 영역 크기가 바뀌면 준비가 다시 돈다.
+                    // 테스트가 크기를 재서 그것을 막는다.
+                    key: const Key('scratchArea'),
                     onPanStart: (e) =>
                         _addPoint(e.localPosition, newStroke: true),
                     onPanUpdate: (e) =>
@@ -456,7 +495,16 @@ class _ScratchPageState extends State<ScratchPage>
                     ],
                   ),
                   const SizedBox(height: 12),
+                  // **높이를 고정한다.**
+                  //
+                  // 안 그러면 완료 시 하단이 안내 문구에서 버튼으로 바뀌며
+                  // 위쪽 `Expanded` 가 줄어들고, `LayoutBuilder` 가 새 크기를
+                  // 보고 **`_prepare()` 를 다시 돌린다.** 그 안의
+                  // `_strokes.clear()` 가 긁은 자취를 버린다 — 은박이 이미
+                  // 사라진 뒤라 눈에 안 띌 뿐 낭비이자 잠재 버그였다
+                  // (신안군 기준 23ms, 2026-08-14 실기기에서 발견).
                   SizedBox(
+                    key: const Key('scratchFooter'),
                     width: double.infinity,
                     child: _buildFooter(t),
                   ),

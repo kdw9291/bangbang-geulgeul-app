@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import 'app_theme.dart';
 import 'map_data.dart';
@@ -166,7 +166,7 @@ class _SearchSheetState extends State<SearchSheet> {
 
   Widget _row(AppTheme t, RegionSearchResult r) {
     final collected = widget.scratched.contains(r.region.scratchUnitId);
-    final color = kSidoColors[r.region.sido];
+    final color = sidoColorOf(r.sidoName);
 
     // **이름이 겹치면 시도명을 반드시 보여준다.** `중구` 만으로는 여섯 곳 중
     // 어디인지 알 수 없다. 겹치지 않아도 시도명은 참고로 함께 둔다.

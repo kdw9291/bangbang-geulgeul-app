@@ -177,6 +177,46 @@ void main() {
     });
   });
 
+  group('지도 제스처', () {
+    // `onTapDown` 이던 것을 `onTapUp` 으로 바꿨다. 누르는 순간 팝업을 열면
+    // 지도를 끌려던 것까지 선택으로 처리된다 (M9, S1 이월).
+
+    /// 지도 한가운데. 내륙이라 어느 지역이든 걸린다.
+    Offset mapCenter(WidgetTester tester) =>
+        tester.getCenter(find.byType(InteractiveViewer));
+
+    testWidgets('탭하면 소개 팝업이 열린다', (tester) async {
+      await pumpApp(tester,
+          mapLoader: mapAfter(null), storeOpener: opener(mem(null)));
+      await settle(tester);
+
+      await tester.tapAt(mapCenter(tester));
+      await tester.pumpAndSettle();
+
+      expect(find.text('지역 긁기'), findsOneWidget);
+    });
+
+    testWidgets('끌면 팝업이 열리지 않는다', (tester) async {
+      await pumpApp(tester,
+          mapLoader: mapAfter(null), storeOpener: opener(mem(null)));
+      await settle(tester);
+
+      // **손을 잠깐 댔다가 끈다.** 곧바로 휙 끄는 동작으로는 차이가 안 난다 —
+      // `onTapDown` 은 누른 뒤 약 100ms(`kPressTimeout`)가 지나야 발동하므로,
+      // 빠른 드래그에서는 어느 쪽이든 팝업이 안 열린다. 실제 사용자는
+      // 손을 대고 잠시 뒤에 끈다.
+      final g = await tester.startGesture(mapCenter(tester));
+      await tester.pump(const Duration(milliseconds: 200));
+      await g.moveBy(const Offset(0, -160));
+      await tester.pump();
+      await g.up();
+      await tester.pumpAndSettle();
+
+      expect(find.text('지역 긁기'), findsNothing,
+          reason: '끌었는데 팝업이 열렸다');
+    });
+  });
+
   group('로드 실패 안내', () {
     testWidgets('손상 파일은 시작 직후 알린다', (tester) async {
       // 조용히 빈 상태로 시작하면 사용자는 기록이 사라진 것을 모른 채

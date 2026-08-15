@@ -573,7 +573,12 @@ class _MapSpikePageState extends State<MapSpikePage>
           // `Center` 가 `InteractiveViewer` **밖**에 있으므로 변환은 지도 위젯
           // 좌표계에서 일어난다. 순서를 바꾸면(`toScene(x) - origin`) 확대율이
           // 1이 아닐 때 어긋난다 — `M⁻¹(s−o)` 와 `M⁻¹(s)−o` 는 다르다.
-          onTapDown: (e) =>
+          // **`onTapDown` 이 아니라 `onTapUp` 이다.**
+          //
+          // 누르는 순간 팝업을 열면 지도를 끌려고 손을 댄 것까지 선택으로
+          // 처리된다. `onTapUp` 은 제스처 판정이 "탭" 으로 끝났을 때만 오므로
+          // 드래그·확대와 섞이지 않는다 (Codex 1회차 Medium #6, S1 이월).
+          onTapUp: (e) =>
               _onTapMap(_tc.toScene(e.localPosition - mapOrigin), d, w),
           // 바다 바탕을 뷰포트에 정확히 채운다. painter 안에서 큰 사각형으로
           // 칠하면 범위가 매직 넘버가 되고 변환까지 따라 움직인다.
@@ -627,7 +632,7 @@ class _RegionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = kSidoColors[region.sido];
+    final color = sidoColorOf(sidoName);
     final t = AppThemeScope.of(context);
     return SafeArea(
       child: Padding(

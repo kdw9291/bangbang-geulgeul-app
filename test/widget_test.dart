@@ -14,9 +14,19 @@ void main() {
     expect(data.sidoLines.length, 16);
     expect(data.vertexCount, greaterThan(10000));
 
-    // 시도 인덱스가 색 배열 범위를 벗어나면 렌더에서 터진다
+    // **모든 시도에 색이 있어야 한다.**
+    //
+    // 예전에는 배열 인덱스 범위만 봤는데, 그러면 순서가 바뀌어도 통과한다.
+    // 실제로 시도 외곽선 색이 전부 어긋난 버그가 그렇게 지나갔다(S1).
+    // 이름으로 찾으므로 이름이 빠졌는지를 본다.
+    for (final name in data.sidoNames) {
+      expect(kSidoColorByName[name], isNotNull, reason: '색이 없다: $name');
+    }
+    expect(kSidoColorByName.length, data.sidoNames.length,
+        reason: '색표에 지도에 없는 시도가 있다');
+
     for (final r in data.regions) {
-      expect(r.sido, inInclusiveRange(0, kSidoColors.length - 1));
+      expect(r.sido, inInclusiveRange(0, data.sidoNames.length - 1));
       expect(r.bounds.isEmpty, isFalse);
 
       // **길이를 5로 못 박지 않는다.** `scratchUnitId` 는 불투명 ID 계약이라

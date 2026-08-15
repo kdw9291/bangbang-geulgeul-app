@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -136,7 +136,7 @@ void main() {
         ..scaleByDouble(k, k, 1, 1);
       final path = shape.transform(m.storage);
 
-      canvas.drawPath(path, Paint()..color = kSidoColors[region.sido]);
+      canvas.drawPath(path, Paint()..color = sidoColorOf(data.sidoNames[region.sido]));
 
       final art = artForRegion(region.scratchUnitId);
       if (art != null) {

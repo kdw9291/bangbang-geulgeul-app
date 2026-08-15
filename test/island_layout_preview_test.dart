@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -45,13 +45,13 @@ void main() {
 
       // ---- 왼쪽: 현재 방식 ----
       _drawFitted(canvas, region.path, region.bounds, Offset(0, oy), cell,
-          kSidoColors[region.sido], artForRegion(region.scratchUnitId));
+          sidoColorOf(data.sidoNames[region.sido]), artForRegion(region.scratchUnitId));
 
       // ---- 오른쪽: 재배치 + 아트는 가장 큰 섬에만 ----
       final layout = packIslands(region.rings);
       final packed = buildPackedPath(layout);
       _drawFitted(canvas, packed, layout.bounds, Offset(cell, oy), cell,
-          kSidoColors[region.sido], artForRegion(region.scratchUnitId),
+          sidoColorOf(data.sidoNames[region.sido]), artForRegion(region.scratchUnitId),
           artClip: buildLargestIslandPath(layout));
 
       final before = _fill(region.rings, region.bounds);

@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -173,7 +173,7 @@ void main() {
       // 단일 강조색으로는 불가능하다 — 라이트 후보 #E8890C 는 강원과 1.04:1,
       // 다크의 기존 노랑도 제주와 1.34:1 이었다. 두 겹 중 하나는 반드시 보여야 한다.
       final backgrounds = <Color>[
-        ...kSidoColors,
+        ...kSidoColorByName.values,
         for (final p in [...kSeaPalettes, kSeaFlat]) p.base,
       ];
       for (final t in [kThemeLight, kThemeDark]) {

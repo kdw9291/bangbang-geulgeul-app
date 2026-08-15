@@ -8,25 +8,43 @@ import 'geometry.dart';
 
 /// 시도 색. 참조 실물 맵의 권역 논리를 따른다
 /// (수도권 자주 · 강원 주황 · 충청 보라 · 전라 초록 · 경상 파랑 · 제주 연두).
-/// 순서는 에셋의 `sidos` 배열과 반드시 일치해야 한다.
-const List<Color> kSidoColors = [
-  Color(0xFFE0457B), // 서울
-  Color(0xFFB03268), // 인천
-  Color(0xFFF0809F), // 경기
-  Color(0xFFE8833A), // 강원
-  Color(0xFF8B6FD4), // 충북
-  Color(0xFFA98BE0), // 충남
-  Color(0xFF6B4FB8), // 대전
-  Color(0xFFC3B2EE), // 세종
-  Color(0xFF52A96C), // 전북
-  Color(0xFF2E8F55), // 전남광주
-  Color(0xFF4A90D9), // 경북
-  Color(0xFF2C6DB5), // 대구
-  Color(0xFF74B2E8), // 경남
-  Color(0xFF1D5A9C), // 부산
-  Color(0xFF3F86C9), // 울산
-  Color(0xFFAFC63C), // 제주
-];
+///
+/// **배열이 아니라 이름으로 찾는다.** 예전에는 에셋 `sidos` 배열의 순서에
+/// 기대는 `List` 였는데, 그 순서는 원본 데이터가 정하는 것이라 개편이나 재생성으로
+/// 언제든 바뀔 수 있다. 실제로 **시도 외곽선 색이 전부 어긋난 버그가 한 번 있었고**
+/// 그때도 원인이 배열 순서였다(S1, 서울만 우연히 맞았다). 이름은 값 자체라
+/// 순서가 바뀌어도 따라오지 않는다.
+const Map<String, Color> kSidoColorByName = {
+  '서울특별시': Color(0xFFE0457B),
+  '인천광역시': Color(0xFFB03268),
+  '경기도': Color(0xFFF0809F),
+  '강원특별자치도': Color(0xFFE8833A),
+  '충청북도': Color(0xFF8B6FD4),
+  '충청남도': Color(0xFFA98BE0),
+  '대전광역시': Color(0xFF6B4FB8),
+  '세종특별자치시': Color(0xFFC3B2EE),
+  '전북특별자치도': Color(0xFF52A96C),
+  '전남광주통합특별시': Color(0xFF2E8F55),
+  '경상북도': Color(0xFF4A90D9),
+  '대구광역시': Color(0xFF2C6DB5),
+  '경상남도': Color(0xFF74B2E8),
+  '부산광역시': Color(0xFF1D5A9C),
+  '울산광역시': Color(0xFF3F86C9),
+  '제주특별자치도': Color(0xFFAFC63C),
+};
+
+/// 색을 못 찾았을 때. **조용히 이 색이 나오면 색표에 시도가 빠진 것이다.**
+const kSidoColorMissing = Color(0xFF9E9E9E);
+
+/// [sidoName] 의 시도 색.
+///
+/// 모르는 이름이면 디버그에서는 즉시 터뜨려 알아차리게 하고, 릴리스에서는
+/// 회색으로 그린다 — 색 하나 때문에 지도를 못 그리는 편이 더 나쁘다.
+Color sidoColorOf(String sidoName) {
+  final c = kSidoColorByName[sidoName];
+  assert(c != null, '시도 색이 없다: $sidoName');
+  return c ?? kSidoColorMissing;
+}
 
 class Region {
   Region({

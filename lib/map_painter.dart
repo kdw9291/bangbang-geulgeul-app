@@ -1,4 +1,4 @@
-import 'dart:ui' as ui;
+﻿import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
@@ -105,7 +105,7 @@ void _paintMap(
 
   for (final r in data.regions) {
     final done = scratched.contains(r.scratchUnitId);
-    fill.color = done ? kSidoColors[r.sido] : foil;
+    fill.color = done ? sidoColorOf(data.sidoNames[r.sido]) : foil;
     canvas.drawPath(r.path, fill);
     if (stroke) canvas.drawPath(r.path, hair);
 
@@ -135,7 +135,7 @@ void _paintMap(
     // 배열 순서가 아니라 각 항목의 sido 인덱스로 색을 고른다.
     // 순서를 그대로 색 인덱스로 쓰면 시도별 색이 전부 어긋난다.
     for (final l in data.sidoLines) {
-      line.color = kSidoColors[l.sido].withValues(alpha: 0.9);
+      line.color = sidoColorOf(data.sidoNames[l.sido]).withValues(alpha: 0.9);
       canvas.drawPath(l.path, line);
     }
   }
