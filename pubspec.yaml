@@ -35,6 +35,9 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   path_provider: ^2.1.6
+  # 메모 길이를 **자소 클러스터**로 센다. `String.length` 는 UTF-16 code unit 이라
+  # 이모지에서 어긋난다. transitive 로도 들어오지만 직접 import 하므로 명시한다.
+  characters: ^1.4.0
 
 dev_dependencies:
   flutter_test:

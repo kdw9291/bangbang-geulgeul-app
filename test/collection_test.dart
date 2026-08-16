@@ -392,6 +392,236 @@ void main() {
     });
   });
 
+  group('메모 정규화와 상한', () {
+    test('앞뒤 공백을 버리고 비면 null 이다', () {
+      expect(normalizeMemo('  비 오는 날  '), '비 오는 날');
+      expect(normalizeMemo(''), isNull);
+      expect(normalizeMemo('   '), isNull);
+      expect(normalizeMemo(null), isNull);
+    });
+
+    test('줄바꿈은 공백이 된다', () {
+      // "짧은 한 줄" 은 제품 결정이다. `maxLines: 1` 만 믿으면 붙여넣기·IME 가
+      // 여러 줄을 밀어 넣을 수 있다 (Codex 21회차).
+      expect(normalizeMemo('첫 줄\n둘째 줄'), '첫 줄 둘째 줄');
+      expect(normalizeMemo('가\r\n나\t다'), '가 나 다');
+    });
+
+    test('withMemo 가 메모만 바꾼다', () {
+      final u = _u('47130', '2026-08-14T00:00:00Z', memo: '옛 메모');
+      final next = u.withMemo('새 메모');
+      expect(next.memo, '새 메모');
+      expect(next.scratchUnitId, u.scratchUnitId);
+      expect(next.collectedAtUtc, u.collectedAtUtc);
+      expect(next.utcOffsetMinutes, u.utcOffsetMinutes);
+    });
+
+    test('비우면 지워진다', () {
+      final u = _u('47130', '2026-08-14T00:00:00Z', memo: '있던 메모');
+      expect(u.withMemo(null).memo, isNull);
+      expect(u.withMemo('').memo, isNull);
+      expect(u.withMemo('   ').memo, isNull);
+    });
+
+    test('상한까지는 되고 넘으면 거부한다', () {
+      final u = _u('47130', '2026-08-14T00:00:00Z');
+      expect(u.withMemo('가' * kMemoMaxLength).memo!.length, kMemoMaxLength);
+      expect(() => u.withMemo('가' * (kMemoMaxLength + 1)),
+          throwsA(isA<MemoTooLongException>()));
+    });
+
+    test('길이는 자소 클러스터로 센다', () {
+      // 가족 이모지는 UTF-16 code unit 으로 11 이지만 사람 눈에는 한 글자다.
+      // `String.length` 로 세면 여덟 글자에서 막힌다.
+      const family = '👨‍👩‍👧‍👦';
+      expect(family.length, greaterThan(1), reason: '전제가 깨졌다');
+      final u = _u('47130', '2026-08-14T00:00:00Z');
+      expect(u.withMemo(family * kMemoMaxLength).memo, isNotNull);
+      expect(() => u.withMemo(family * (kMemoMaxLength + 1)),
+          throwsA(isA<MemoTooLongException>()));
+    });
+
+    test('스냅샷의 메모를 바꾼다', () {
+      final s = CollectionSnapshot.empty
+          .collect(_u('47130', '2026-08-14T00:00:00Z'));
+      final next = s.setMemo('47130', '첨성대 야경');
+      expect(next['47130']!.memo, '첨성대 야경');
+      expect(s['47130']!.memo, isNull, reason: '원본이 제자리에서 바뀌었다');
+    });
+
+    test('수집하지 않은 지역에는 남길 수 없다', () {
+      // 조용히 무시하면 화면이 저장에 성공한 줄 알고, 새 레코드를 만들면
+      // 수집 시각과 오프셋을 지어내게 된다 (Codex 21회차).
+      expect(() => CollectionSnapshot.empty.setMemo('47130', '메모'),
+          throwsArgumentError);
+    });
+
+    test('값이 그대로면 같은 스냅샷이다', () {
+      final s = CollectionSnapshot.empty
+          .collect(_u('47130', '2026-08-14T00:00:00Z', memo: '그대로'));
+      expect(identical(s.setMemo('47130', '그대로'), s), isTrue);
+      expect(identical(s.setMemo('47130', '  그대로  '), s), isTrue,
+          reason: '정규화 후 같으면 바뀐 것이 아니다');
+    });
+
+    test('상한을 넘는 기존 메모를 읽고 그대로 다시 쓴다', () {
+      // **상한을 올린 미래 버전이 쓴 파일**이다. decode 가 막으면 손상으로 보고
+      // 격리하고, encode 가 자르면 다른 지역을 수집하다가 남의 메모를 잘라낸다
+      // (Codex 21회차).
+      final long = '나' * (kMemoMaxLength + 50);
+      final raw = jsonEncode({
+        'version': 1,
+        'units': [
+          {
+            'scratchUnitId': '47130',
+            'collectedAtUtc': '2026-08-14T00:00:00.000Z',
+            'utcOffsetMinutes': 540,
+            'memo': long,
+          }
+        ],
+      });
+
+      final loaded = decodeCollection(raw);
+      expect(loaded['47130']!.memo, long, reason: 'decode 가 상한을 검사했다');
+
+      // 다른 지역을 수집해도 긴 메모가 살아남는다.
+      final after = loaded.collect(_u('11000', '2026-08-15T00:00:00Z'));
+      final again = decodeCollection(encodeCollection(after));
+      expect(again['47130']!.memo, long, reason: 'encode 가 남의 메모를 잘랐다');
+    });
+
+    test('그 메모를 직접 고칠 때는 상한이 걸린다', () {
+      final long = '나' * (kMemoMaxLength + 50);
+      final s = CollectionSnapshot.empty.collect(
+          _u('47130', '2026-08-14T00:00:00Z', memo: long));
+      expect(() => s.setMemo('47130', long),
+          throwsA(isA<MemoTooLongException>()));
+      // 줄이면 저장된다.
+      expect(s.setMemo('47130', '짧게')['47130']!.memo, '짧게');
+    });
+  });
+
+  group('CollectionStore 메모 쓰기', () {
+    Future<CollectionStore> opened(_MemStorage storage) async {
+      final store = CollectionStore(storage);
+      await store.load();
+      return store;
+    }
+
+    test('저장에 성공해야 스냅샷이 바뀐다', () async {
+      final storage = _MemStorage();
+      final store = await opened(storage);
+      await store.collect(_u('47130', '2026-08-14T00:00:00Z'));
+
+      final next = await store.setMemo('47130', '첨성대 야경');
+      expect(next['47130']!.memo, '첨성대 야경');
+      expect(decodeCollection(storage.contents!)['47130']!.memo, '첨성대 야경');
+    });
+
+    test('쓰기가 실패하면 메모가 반영되지 않는다', () async {
+      final storage = _MemStorage();
+      final store = await opened(storage);
+      await store.collect(_u('47130', '2026-08-14T00:00:00Z'));
+      storage.failWrite = true;
+
+      await expectLater(store.setMemo('47130', '실패할 메모'), throwsA(anything));
+      expect(store.snapshot['47130']!.memo, isNull);
+
+      // 큐가 막히지 않아 재시도가 된다.
+      storage.failWrite = false;
+      await store.setMemo('47130', '다시 시도');
+      expect(store.snapshot['47130']!.memo, '다시 시도');
+    });
+
+    test('쓸 수 없는 상태에서는 거부한다', () async {
+      final storage = _MemStorage('{"version":99,"units":[]}');
+      final store = await opened(storage);
+      expect(store.writable, isFalse);
+      expect(() => store.setMemo('47130', '메모'), throwsStateError);
+    });
+
+    test('없는 지역이면 쓰기를 만들지 않는다', () async {
+      final storage = _MemStorage();
+      final store = await opened(storage);
+      await expectLater(store.setMemo('47130', '메모'), throwsArgumentError);
+      expect(storage.writes, 0);
+    });
+
+    test('같은 값으로 저장하면 디스크를 건드리지 않는다', () async {
+      final storage = _MemStorage();
+      final store = await opened(storage);
+      await store.collect(_u('47130', '2026-08-14T00:00:00Z', memo: '그대로'));
+      final before = storage.writes;
+
+      await store.setMemo('47130', '그대로');
+      expect(storage.writes, before);
+    });
+
+    test('메모가 먼저여도 수집과 함께 남는다', () async {
+      final storage = _MemStorage();
+      final store = await opened(storage);
+      await store.collect(_u('47130', '2026-08-14T00:00:00Z'));
+
+      final gate = Completer<void>();
+      storage.gate = gate;
+      final memo = store.setMemo('47130', '첨성대');
+      final collect = store.collect(_u('11000', '2026-08-15T00:00:00Z'));
+      gate.complete();
+      await Future.wait([memo, collect]);
+
+      final saved = decodeCollection(storage.contents!);
+      expect(saved['47130']!.memo, '첨성대');
+      expect(saved.contains('11000'), isTrue);
+    });
+
+    test('수집이 먼저여도 메모가 그것을 지우지 않는다', () async {
+      // **이 순서라야 큐 밖 계산이 드러난다.** 메모를 먼저 넣으면 미리 계산한
+      // 스냅샷이 어차피 최신이라 결함이 숨는다 — 실제로 처음 쓴 테스트가
+      // 그래서 통과했다. 앞선 수집이 아직 안 끝난 사이에 메모를 걸어야 한다.
+      final storage = _MemStorage();
+      final store = await opened(storage);
+      await store.collect(_u('47130', '2026-08-14T00:00:00Z'));
+
+      final gate = Completer<void>();
+      storage.gate = gate;
+      final collect = store.collect(_u('11000', '2026-08-15T00:00:00Z'));
+      final memo = store.setMemo('47130', '첨성대');
+      gate.complete();
+      await Future.wait([collect, memo]);
+
+      final saved = decodeCollection(storage.contents!);
+      expect(saved.contains('11000'), isTrue,
+          reason: '메모 저장이 앞선 수집을 덮어썼다');
+      expect(saved['47130']!.memo, '첨성대');
+      expect(store.snapshot.contains('11000'), isTrue);
+    });
+
+    test('중복 수집이 메모를 지우지 않는다', () async {
+      final storage = _MemStorage();
+      final store = await opened(storage);
+      await store.collect(_u('47130', '2026-08-14T00:00:00Z'));
+      await store.setMemo('47130', '지워지면 안 된다');
+
+      await store.collect(_u('47130', '2026-08-20T00:00:00Z'));
+      expect(store.snapshot['47130']!.memo, '지워지면 안 된다');
+    });
+
+    test('연속 저장은 마지막 값이 남는다', () async {
+      final storage = _MemStorage();
+      final store = await opened(storage);
+      await store.collect(_u('47130', '2026-08-14T00:00:00Z'));
+
+      final gate = Completer<void>();
+      storage.gate = gate;
+      final a = store.setMemo('47130', '첫 번째');
+      final b = store.setMemo('47130', '두 번째');
+      gate.complete();
+      await Future.wait([a, b]);
+
+      expect(decodeCollection(storage.contents!)['47130']!.memo, '두 번째');
+    });
+  });
+
   group('FileCollectionStorage', () {
     late Directory dir;
     setUp(() => dir = Directory.systemTemp.createTempSync('mapscratch_test'));

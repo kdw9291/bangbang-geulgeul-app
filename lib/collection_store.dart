@@ -212,6 +212,35 @@ class CollectionStore {
     return done.future;
   }
 
+  /// [scratchUnitId] 의 메모를 바꾼다. 비우면 지운다. **저장에 성공해야 반영된다.**
+  ///
+  /// `collect` 와 **같은 큐**를 쓴다. 다른 큐로 두면 메모 저장과 수집 저장이
+  /// 서로의 결과를 덮어쓴다. 다음 스냅샷도 마찬가지로 큐 안에서 만든다 —
+  /// 호출 시점에 계산하면 앞선 쓰기가 반영되기 전 상태를 기준으로 삼는다.
+  Future<CollectionSnapshot> setMemo(String scratchUnitId, String? memo) async {
+    if (!_writable) {
+      throw StateError('지금은 쓸 수 없는 상태다 (load 결과를 확인할 것)');
+    }
+    final done = Completer<CollectionSnapshot>();
+    _tail = _tail.then((_) async {
+      try {
+        final next = _snapshot.setMemo(scratchUnitId, memo);
+        // 값이 그대로면 쓰지 않는다. 같은 메모로 저장을 눌러도 디스크를 건드리지 않는다.
+        if (identical(next, _snapshot)) {
+          done.complete(_snapshot);
+          return;
+        }
+        await _storage.writeAtomically(encodeCollection(next));
+        _snapshot = next;
+        done.complete(next);
+      } catch (e, s) {
+        done.completeError(e, s);
+      }
+    });
+    _tail = _tail.catchError((_) {});
+    return done.future;
+  }
+
   @visibleForTesting
   set snapshotForTest(CollectionSnapshot s) => _snapshot = s;
 

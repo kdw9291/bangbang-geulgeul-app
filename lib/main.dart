@@ -369,6 +369,7 @@ class _MapSpikePageState extends State<MapSpikePage>
         // 수집 기록 원본에서 꺼낸다. 화면용 `Set` 에는 수집일시·메모가 없다.
         collected: _store?.snapshot[r.scratchUnitId],
         progress: sidoProgressOf(d, _scratched, r.sido),
+        onSaveMemo: _saveMemo,
       ),
     );
     if (go != true || !mounted) return;
@@ -430,6 +431,17 @@ class _MapSpikePageState extends State<MapSpikePage>
     });
     debugPrint('[SCRATCH] 지도 반영 ${unit.scratchUnitId} · '
         '수집 ${_scratched.length}/${d.regions.length}');
+  }
+
+  /// 팝업이 메모를 저장할 때 부른다. **저장에 성공한 레코드**를 돌려준다.
+  ///
+  /// 실패는 그대로 올려보낸다 — 입력 화면이 오류를 보여 주고 내용을 붙잡고 있어야 한다.
+  /// 메모는 지도 표시에 영향이 없으므로 `_scratched` 는 건드리지 않는다.
+  Future<CollectedUnit> _saveMemo(String scratchUnitId, String? memo) async {
+    final store = _store;
+    if (store == null) throw StateError('저장소가 아직 준비되지 않았다');
+    final next = await store.setMemo(scratchUnitId, memo);
+    return next[scratchUnitId]!;
   }
 
   void _toggleBenchmark() {
@@ -636,12 +648,19 @@ class _MapSpikePageState extends State<MapSpikePage>
 ///
 /// 양쪽 모두 **시도 진행률**을 넣는다. 232번 반복되는 고정 문구만 두면
 /// 수집 앱으로서 심심하고, 다음 목표도 보이지 않는다.
-class _RegionSheet extends StatelessWidget {
+/// 메모 저장 콜백. 저장에 **성공한 레코드**를 돌려주고, 실패는 예외로 올린다.
+typedef MemoSaver = Future<CollectedUnit> Function(
+    String scratchUnitId, String? memo);
+
+/// **Stateful 이어야 한다.** 메모를 저장한 뒤 팝업을 닫았다 열지 않고도
+/// 그 자리에서 반영되어야 하기 때문이다(Codex 21회차).
+class _RegionSheet extends StatefulWidget {
   const _RegionSheet({
     required this.region,
     required this.sidoName,
     required this.collected,
     required this.progress,
+    required this.onSaveMemo,
   });
 
   final Region region;
@@ -651,8 +670,52 @@ class _RegionSheet extends StatelessWidget {
   final CollectedUnit? collected;
 
   final SidoProgress progress;
+  final MemoSaver onSaveMemo;
+
+  @override
+  State<_RegionSheet> createState() => _RegionSheetState();
+}
+
+class _RegionSheetState extends State<_RegionSheet> {
+  late CollectedUnit? collected = widget.collected;
+
+  Region get region => widget.region;
+  String get sidoName => widget.sidoName;
+  SidoProgress get progress => widget.progress;
 
   bool get scratched => collected != null;
+
+  Future<void> _editMemo() async {
+    final unit = collected;
+    if (unit == null) return;
+    final saved = await showModalBottomSheet<CollectedUnit>(
+      context: context,
+      // **키보드 때문에 반드시 필요하다.** 없으면 시트가 화면의 9/16 까지만 쓸 수
+      // 있어 키보드 높이만큼 밀어 올릴 자리가 없다. 짧은 화면만으로는 드러나지
+      // 않는다 — 이 시트는 9/16 안에 들어간다.
+      isScrollControlled: true,
+      useSafeArea: true,
+      // **저장 중에 닫히면 안 된다.** 저장은 됐는데 바깥 팝업이 결과를 못 받거나,
+      // 실패했다면 입력과 오류가 함께 사라진다.
+      //
+      // 셋을 다 막아야 한다 — 배경 탭(`isDismissible`), 아래로 끌기(`enableDrag`),
+      // 뒤로가기(시트 안 `PopScope`). **드래그는 `Navigator.pop` 을 직접 부르므로
+      // `PopScope` 를 우회한다**(Codex 21회차. 테스트로 재현했다).
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: AppThemeScope.of(context).surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (_) => _MemoSheet(
+        regionName: region.name,
+        initial: unit.memo,
+        onSave: (memo) => widget.onSaveMemo(region.scratchUnitId, memo),
+      ),
+    );
+    if (saved == null || !mounted) return;
+    setState(() => collected = saved);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -713,10 +776,28 @@ class _RegionSheet extends StatelessWidget {
             const SizedBox(height: 14),
             ..._body(t, color),
             const SizedBox(height: 18),
+            if (scratched) ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  key: const Key('regionMemoEdit'),
+                  onPressed: _editMemo,
+                  // 본문이 메모 칸을 숨기는 기준과 **같아야 한다.** `!= null` 만
+                  // 보면 공백뿐인 메모에서 "고치기" 인데 보이는 메모가 없다
+                  // (Codex 21회차). 밖에서 쓴 파일에 그런 값이 들어올 수 있다.
+                  child: Text(
+                    normalizeMemo(collected!.memo) == null
+                        ? '메모 남기기'
+                        : '메모 고치기',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             SizedBox(
               width: double.infinity,
               child: scratched
-                  ? OutlinedButton(
+                  ? TextButton(
                       onPressed: () => Navigator.of(context).pop(false),
                       child: const Text('닫기'),
                     )
@@ -777,6 +858,151 @@ class _RegionSheet extends StatelessWidget {
 
   /// 수집 **당시** 사용자의 날짜다. 지금 기기의 시간대로 다시 풀지 않는다.
   static String _formatDate(DateTime d) => '${d.year}년 ${d.month}월 ${d.day}일';
+}
+
+/// 한 줄 메모 입력. 저장에 성공하면 갱신된 레코드를 `pop` 으로 돌려준다.
+///
+/// **선택 입력이고 짧은 한 줄이다.** 긁기 완료 직후에 묻지 않고 여기서만 받는다 —
+/// 브리프가 메모를 제외했던 이유(입력 비용이 높으면 오래 못 쓴다)가 완료 흐름에
+/// 돌아오지 않게 하기 위해서다(2026-08-16 사용자 결정).
+class _MemoSheet extends StatefulWidget {
+  const _MemoSheet({
+    required this.regionName,
+    required this.initial,
+    required this.onSave,
+  });
+
+  final String regionName;
+  final String? initial;
+
+  /// 저장. 실패는 예외로 올라오며 **입력 내용을 버리지 않는다.**
+  final Future<CollectedUnit> Function(String? memo) onSave;
+
+  @override
+  State<_MemoSheet> createState() => _MemoSheetState();
+}
+
+class _MemoSheetState extends State<_MemoSheet> {
+  late final _text = TextEditingController(text: widget.initial ?? '');
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final saved = await widget.onSave(_text.text);
+      if (!mounted) return;
+      Navigator.of(context).pop(saved);
+    } catch (e) {
+      if (!mounted) return;
+      // **SnackBar 를 쓰지 않는다.** 루트 `ScaffoldMessenger` 가 띄우면 모달 시트
+      // 뒤나 아래에 깔려 보이지 않을 수 있다(Codex 21회차). 시트 안에 직접 보여 준다.
+      setState(() {
+        _saving = false;
+        _error = e is MemoTooLongException
+            ? '메모가 너무 깁니다. $kMemoMaxLength 자까지 쓸 수 있어요.'
+            : '메모를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppThemeScope.of(context);
+    return PopScope(
+      // 저장 중에는 뒤로가기로 나갈 수 없다. 저장은 됐는데 결과를 못 받는 경로를 막는다.
+      canPop: !_saving,
+      child: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            16,
+            20,
+            // 키보드 높이만큼 밀어 올린다. 없으면 입력창이 키보드에 가린다.
+            20 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${widget.regionName}에 한 줄 남기기',
+                  style: TextStyle(
+                    color: t.onSurface,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '비워 두고 저장하면 메모가 지워집니다.',
+                  style: TextStyle(color: t.onSurfaceFaint, fontSize: 13),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  key: const Key('memoField'),
+                  controller: _text,
+                  autofocus: true,
+                  enabled: !_saving,
+                  maxLength: kMemoMaxLength,
+                  // 화면에서도 한 줄로 묶지만 **최종 방어선은 모델이다** —
+                  // 붙여넣기와 IME 는 이 설정을 우회할 수 있다.
+                  maxLines: 1,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _save(),
+                  style: TextStyle(color: t.onSurface),
+                  decoration: InputDecoration(
+                    hintText: '그날 기억나는 것 하나',
+                    hintStyle: TextStyle(color: t.onSurfaceGhost),
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    _error!,
+                    key: const Key('memoError'),
+                    style: TextStyle(color: t.bad, fontSize: 13),
+                  ),
+                ],
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed:
+                            _saving ? null : () => Navigator.of(context).pop(),
+                        child: const Text('취소'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: FilledButton(
+                        key: const Key('memoSave'),
+                        onPressed: _saving ? null : _save,
+                        child: Text(_saving ? '저장 중…' : '저장'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// 시도 진행률 한 줄. 수집 전후 모두에 들어간다.

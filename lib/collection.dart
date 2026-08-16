@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:characters/characters.dart';
+
 /// 수집 기록의 **순수 모델과 직렬화**. 파일 I/O 는 `collection_store.dart` 에 있다.
 ///
 /// 둘을 나눈 이유는 테스트가 프로덕션 로직을 복제하지 않게 하기 위해서다 —
@@ -8,7 +10,36 @@ import 'dart:convert';
 /// 반드시 이 파일의 코드를 통과한다.
 
 /// 저장 스키마 버전. **의미 있는 영속 필드를 더하거나 바꾸면 올린다.**
+///
+/// M5 에서 메모 **입력**을 열었지만 버전은 그대로다 — 필드도 표현도 이미 v1 에 있고,
+/// 입력 UI 와 길이 상한은 스키마가 아니다.
 const int kCollectionVersion = 1;
+
+/// 메모 길이 상한(자소 클러스터 기준). 2026-08-16 사용자 결정.
+///
+/// **쓰기 경로에서만 강제한다.** `decode` 와 `encode` 는 검사하지 않는다 —
+/// 상한을 올린 미래 버전이 쓴 메모를 구버전이 손상으로 보거나, 다른 기록을
+/// 저장하다가 남의 메모를 잘라 버리게 된다(Codex 21회차).
+const int kMemoMaxLength = 80;
+
+/// 메모를 저장 가능한 형태로 다듬는다. 비면 `null` — **빈 문자열을 남기지 않는다.**
+///
+/// 줄바꿈은 공백으로 바꾼다. "짧은 한 줄" 이 제품 결정이라 `maxLines: 1` 같은
+/// 화면 설정만 믿지 않고 **쓰기 경로에서도** 보장한다(Codex 21회차).
+/// 붙여넣기·IME·자동완성은 화면 제약을 우회할 수 있다.
+String? normalizeMemo(String? raw) {
+  if (raw == null) return null;
+  final one = raw.replaceAll(RegExp(r'\s+'), ' ').trim();
+  return one.isEmpty ? null : one;
+}
+
+/// 상한을 넘는 메모. 화면이 먼저 막지만 **모델이 최종 방어선이다.**
+class MemoTooLongException implements Exception {
+  const MemoTooLongException(this.length);
+  final int length;
+  @override
+  String toString() => '메모가 $kMemoMaxLength 자를 넘는다 ($length 자)';
+}
 
 /// 수집한 긁기 단위 하나.
 class CollectedUnit {
@@ -44,9 +75,27 @@ class CollectedUnit {
     return DateTime(t.year, t.month, t.day);
   }
 
-  // `copyWith` 는 두지 않는다. `memo: null` 로 **메모를 지울 수 없는** 형태가 되어
-  // M5 에서 삭제를 지원할 때 곧바로 함정이 된다. 소비자가 생기는 M5 에서
-  // 지움과 안 바꿈을 구분할 수 있는 형태로 만든다 (Codex 16회차).
+  // `copyWith` 는 여전히 두지 않는다. `memo: null` 로 **메모를 지울 수 없는** 형태가
+  // 되기 때문이다(Codex 16회차). 대신 메모만 다루는 아래 메서드를 둔다 —
+  // **인자가 곧 결과라** "안 바꿈 vs 지움" 이 생길 자리가 없다.
+
+  /// 메모를 [memo] 로 **바꾼 새 레코드**. `null` 이거나 비면 지운다.
+  ///
+  /// 정규화와 상한 검사가 여기 있다. `encodeCollection` 에 두면 **관계없는 저장에서
+  /// 남의 메모까지 변형한다** — 상한을 올린 미래 버전이 쓴 80자 초과 메모를
+  /// 다른 지역을 수집하다가 잘라 버리게 된다(Codex 21회차).
+  CollectedUnit withMemo(String? memo) {
+    final next = normalizeMemo(memo);
+    if (next != null && next.characters.length > kMemoMaxLength) {
+      throw MemoTooLongException(next.characters.length);
+    }
+    return CollectedUnit(
+      scratchUnitId: scratchUnitId,
+      collectedAtUtc: collectedAtUtc,
+      utcOffsetMinutes: utcOffsetMinutes,
+      memo: next,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -113,6 +162,24 @@ class CollectionSnapshot {
     final existing = _units[unit.scratchUnitId];
     if (existing != null) return this;
     return CollectionSnapshot({..._units, unit.scratchUnitId: unit});
+  }
+
+  /// [scratchUnitId] 의 메모를 바꾼 **새 스냅샷**. 비우면 지운다.
+  ///
+  /// **없는 ID 는 오류다.** 조용히 무시하면 화면이 저장에 성공한 줄 알고,
+  /// 새 레코드를 만들면 수집 시각과 오프셋을 지어내게 된다(Codex 21회차).
+  /// 입력은 수집한 지역에서만 열리므로 여기 오면 배선이 잘못된 것이다.
+  ///
+  /// 값이 그대로면 **자기 자신**을 돌려준다 — 호출부가 쓸데없는 디스크 쓰기를 건너뛴다.
+  CollectionSnapshot setMemo(String scratchUnitId, String? memo) {
+    final existing = _units[scratchUnitId];
+    if (existing == null) {
+      throw ArgumentError.value(
+          scratchUnitId, 'scratchUnitId', '수집하지 않은 지역에는 메모를 남길 수 없다');
+    }
+    final next = existing.withMemo(memo);
+    if (next.memo == existing.memo) return this;
+    return CollectionSnapshot({..._units, scratchUnitId: next});
   }
 
   @override
