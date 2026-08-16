@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mapscratch/app_theme.dart';
 import 'package:mapscratch/main.dart';
+import 'package:mapscratch/settings_store.dart';
 import 'package:mapscratch/map_data.dart';
 import 'package:mapscratch/sea_background.dart';
 
@@ -96,7 +97,7 @@ void main() {
         (tester) async {
       // 테스트가 자체 MaterialApp 을 만들면, 실제 `main.dart` 가 나중에
       // `home` 아래 Scope 로 잘못 바뀌어도 잡지 못한다. 실물을 pump 한다.
-      await tester.pumpWidget(const MapScratchApp());
+      await tester.pumpWidget(MapScratchApp(settingsOpener: _testSettings));
       await tester.pump();
 
       final ctx = tester.element(find.byType(Scaffold).first);
@@ -188,4 +189,21 @@ void main() {
       }
     });
   });
+}
+
+/// 설정 저장소를 주입한다. 실제 파일 경로는 `flutter test` 에서
+/// `path_provider` 가 없어 늘 실패하므로, 주입하지 않으면 **모든 테스트가
+/// 설정 로드를 기다리는 상태**에 머문다.
+Future<SettingsStore> _testSettings() async {
+  final s = SettingsStore(_InMemorySettings());
+  await s.load();
+  return s;
+}
+
+class _InMemorySettings implements SettingsStorage {
+  String? contents;
+  @override
+  Future<String?> read() async => contents;
+  @override
+  Future<void> writeAtomically(String c) async => contents = c;
 }

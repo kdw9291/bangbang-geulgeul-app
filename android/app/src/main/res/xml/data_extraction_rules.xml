@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12 이상(API 31 이상). cloud-backup(자동 백업)과 device-transfer
+  (기기 이전) 양쪽에서 settings.json 을 뺀다. 긁은 기록은 그대로 둔다.
+
+  domain 이 root 인 이유는 backup_rules.xml 주석 참고.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" path="app_flutter/settings.json" />
+        <exclude domain="root" path="app_flutter/settings.json.tmp" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" path="app_flutter/settings.json" />
+        <exclude domain="root" path="app_flutter/settings.json.tmp" />
+    </device-transfer>
+</data-extraction-rules>

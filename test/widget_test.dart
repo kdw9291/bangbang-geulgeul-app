@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mapscratch/map_data.dart';
 import 'package:mapscratch/main.dart';
+import 'package:mapscratch/settings_store.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -76,9 +77,14 @@ void main() {
     // 또 pumpAndSettle 은 쓸 수 없다 — FrameStats 가 프레임마다 notifyListeners 를
     // 호출해 통계 바가 계속 리빌드되므로 트리가 영원히 안정되지 않는다.
     await tester.runAsync(() async {
-      await tester.pumpWidget(const MapScratchApp());
+      await tester.pumpWidget(MapScratchApp(settingsOpener: _testSettings));
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
+      // **기다림이 두 번이다.** 설정을 읽어 테마를 정한 뒤에야 지도 로딩이
+      // 시작된다(M12). 어두운 바다를 고른 사용자에게 밝은 지도가 먼저
+      // 번쩍이지 않게 하려고 일부러 순서를 준 것이다.
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      await tester.pump();
       await Future<void>.delayed(const Duration(milliseconds: 400));
       await tester.pump();
 
@@ -96,7 +102,10 @@ void main() {
     // 에셋 로딩은 실제 I/O 라 `runAsync` 로 감싸야 진행된다.
     // `pumpAndSettle` 은 FrameStats 가 프레임마다 알리므로 정착하지 않는다.
     await tester.runAsync(() async {
-      await tester.pumpWidget(const MapScratchApp());
+      await tester.pumpWidget(MapScratchApp(settingsOpener: _testSettings));
+      // 설정 → 지도 순서라 기다림이 두 번이다.
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      await tester.pump();
       await Future<void>.delayed(const Duration(milliseconds: 400));
       await tester.pump();
 
@@ -122,4 +131,21 @@ void main() {
           reason: '자식이 뷰포트 전체 크기면 이동 경계가 지도 기준이 아니다');
     });
   });
+}
+
+/// 설정 저장소를 주입한다. 실제 파일 경로는 `flutter test` 에서
+/// `path_provider` 가 없어 늘 실패하므로, 주입하지 않으면 **모든 테스트가
+/// 설정 로드를 기다리는 상태**에 머문다.
+Future<SettingsStore> _testSettings() async {
+  final s = SettingsStore(_InMemorySettings());
+  await s.load();
+  return s;
+}
+
+class _InMemorySettings implements SettingsStorage {
+  String? contents;
+  @override
+  Future<String?> read() async => contents;
+  @override
+  Future<void> writeAtomically(String c) async => contents = c;
 }

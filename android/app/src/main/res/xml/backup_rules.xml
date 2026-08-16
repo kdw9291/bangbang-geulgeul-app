@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 11 이하(API 30 이하)의 Auto Backup 대상.
+
+  settings.json 은 그 기기의 취향이라 다른 기기로 따라가지 않는다.
+  collection.json(긁은 기록)은 반대로 반드시 백업돼야 한다 — 브리프의 성공 기준이
+  "앱 삭제·기기 변경 후에도 보존" 이다. 그래서 allowBackup=false 로 전체를 막지
+  않고 파일 하나만 뺀다.
+
+  **domain 은 file 이 아니라 root 다.** path_provider 의
+  getApplicationDocumentsDirectory() 는 Android 에서 getDir("flutter") 라
+  실제 위치가 app_flutter/ 다. domain="file"(getFilesDir) 로 적으면 아무것도
+  막지 못한다 (Codex 22회차).
+-->
+<full-backup-content>
+    <exclude domain="root" path="app_flutter/settings.json" />
+    <exclude domain="root" path="app_flutter/settings.json.tmp" />
+</full-backup-content>

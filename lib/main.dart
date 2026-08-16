@@ -18,9 +18,29 @@ import 'region_search.dart';
 import 'scratch_page.dart';
 import 'search_sheet.dart';
 import 'sea_background.dart';
+import 'settings.dart';
+import 'settings_page.dart';
+import 'settings_store.dart';
 import 'sido_progress.dart';
 
-void main() => runApp(const MapScratchApp());
+/// **설정을 읽은 뒤에 첫 프레임을 낸다.**
+///
+/// 화면을 먼저 띄우고 나중에 테마를 바꾸면, 어두운 바다를 고른 사용자가
+/// **흰 화면이 한 프레임 번쩍이는 것**을 본다(Codex 22회차). 그 사이에는
+/// Android 런치 화면이 그대로 보인다.
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  SettingsStore? settings;
+  try {
+    settings = SettingsStore(await FileSettingsStorage.open());
+    await settings.load();
+  } catch (e) {
+    // 설정을 못 읽어도 앱은 떠야 한다. 잃는 것은 취향 하나다.
+    debugPrint('[SETTINGS] 열지 못했다 — 기본값으로 시작한다: $e');
+    settings = null;
+  }
+  runApp(MapScratchApp(settings: settings));
+}
 
 /// 저장소를 아예 열지 못했을 때 쓰는 자리 채움.
 /// 읽기·쓰기 모두 실패시켜 **조용히 빈 상태로 덮어쓰는 일을 막는다.**
@@ -40,8 +60,22 @@ typedef MapLoader = Future<MapData> Function();
 /// 수집 기록 저장소를 열고 로드한다. 테스트가 정상·손상·실패 상태를 만든다.
 typedef StoreOpener = Future<(CollectionStore, CollectionLoadResult)> Function();
 
+/// 설정 저장소를 열고 로드한다.
+typedef SettingsOpener = Future<SettingsStore> Function();
+
 class MapScratchApp extends StatefulWidget {
-  const MapScratchApp({super.key, this.mapLoader, this.storeOpener});
+  const MapScratchApp({
+    super.key,
+    this.mapLoader,
+    this.storeOpener,
+    this.settingsOpener,
+    this.settings,
+  })  : assert(settings == null || settingsOpener == null,
+            '설정 입구는 하나만 쓴다 — 둘 다 주면 settings 가 조용히 이긴다');
+
+  /// **이미 읽어 둔 설정.** 주면 첫 프레임부터 올바른 테마로 그린다.
+  /// `settingsOpener` 는 테스트가 로딩 순서를 제어할 때 쓴다.
+  final SettingsStore? settings;
 
   /// 둘 다 `null` 이면 실제 에셋과 실제 파일 저장소를 쓴다.
   ///
@@ -50,27 +84,98 @@ class MapScratchApp extends StatefulWidget {
   /// 그러면 **정상 배선을 테스트가 한 번도 지나가지 않는다**(Codex 16회차).
   final MapLoader? mapLoader;
   final StoreOpener? storeOpener;
+  final SettingsOpener? settingsOpener;
 
   @override
   State<MapScratchApp> createState() => _MapScratchAppState();
 }
 
+/// `--dart-define=SEA=...` 로 고정한 팔레트. 비어 있으면 사용자 설정을 쓴다.
+const String _seaFromEnv = String.fromEnvironment('SEA');
+
 class _MapScratchAppState extends State<MapScratchApp> {
   /// 바다 팔레트를 앱 최상위에 둔다. 여기서 UI 테마가 함께 결정된다.
   ///
-  /// `--dart-define=SEA=flat` 으로 단색과 교대 측정할 수 있다.
-  /// M12 설정 화면이 생기면 이 값을 사용자가 바꾼다.
-  final SeaPalette _sea = seaPaletteByName(
-      const String.fromEnvironment('SEA', defaultValue: 'cerulean'));
+  /// **환경값이 사용자 설정보다 우선한다.** `--dart-define=SEA=flat` 은 성능
+  /// 측정용이라, 저장된 설정이 이를 덮으면 무엇을 쟀는지 알 수 없게 된다
+  /// (Codex 22회차).
+  SeaPalette _sea = seaPaletteByName(
+      _seaFromEnv.isEmpty ? kDefaultSeaName : _seaFromEnv);
+
+  bool get _seaLocked => _seaFromEnv.isNotEmpty;
+
+  SettingsStore? _settings;
+  final _messenger = GlobalKey<ScaffoldMessengerState>();
+
+  /// 설정을 읽기 전에는 화면을 내보내지 않는다. 기본 테마로 먼저 그리면
+  /// 어두운 바다를 고른 사용자가 **밝은 화면이 번쩍이는 것**을 본다.
+  bool _ready = false;
 
   AppTheme get _theme => themeForSea(_sea.brightness);
 
   @override
+  void initState() {
+    super.initState();
+    final given = widget.settings;
+    if (given != null || widget.settingsOpener == null) {
+      // `main()` 이 이미 읽어 왔다. 첫 프레임부터 올바른 테마로 그린다.
+      _adopt(given ?? SettingsStore(_NullSettingsStorage()));
+    } else {
+      _loadSettings();
+    }
+  }
+
+  void _adopt(SettingsStore store) {
+    _settings = store;
+    if (!_seaLocked) _sea = seaPaletteByName(store.current.seaName);
+    _ready = true;
+  }
+
+  Future<void> _loadSettings() async {
+    SettingsStore store;
+    try {
+      store = await widget.settingsOpener!();
+    } catch (e) {
+      // 설정을 못 읽어도 앱은 떠야 한다. 잃는 것은 취향 하나다.
+      debugPrint('[SETTINGS] 열지 못했다 — 기본값으로 시작한다: $e');
+      store = SettingsStore(_NullSettingsStorage());
+    }
+    if (!mounted) return;
+    setState(() => _adopt(store));
+  }
+
+  /// 설정 화면이 부른다. 화면은 곧바로 바뀌고 저장이 뒤따른다.
+  Future<void> _changeSea(String name) async {
+    final store = _settings;
+    if (store == null || _seaLocked) return;
+    setState(() => _sea = seaPaletteByName(name));
+    try {
+      await store.setSea(name);
+    } catch (_) {
+      if (!mounted) return;
+      // 앱 최상위 context 는 `MaterialApp` 밖이라 `ScaffoldMessenger.of` 가
+      // 닿지 않는다. key 로 직접 잡는다.
+      _messenger.currentState?.showSnackBar(
+        const SnackBar(content: Text('바다 색을 저장하지 못했습니다. 앱을 다시 켜면 되돌아갑니다.')),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final t = _theme;
+    if (!_ready) {
+      // 테마가 아직 안 정해졌으므로 색을 쓰지 않고 로딩만 보여 준다.
+      // 지도도 어차피 같은 시점에 로딩 중이라 화면이 하나 더 늘지 않는다.
+      return const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(body: Center(child: CircularProgressIndicator())),
+      );
+    }
     return MaterialApp(
       title: '방방긁긁',
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: _messenger,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFFA8752A),
@@ -81,13 +186,40 @@ class _MapScratchAppState extends State<MapScratchApp> {
       // **`home` 이 아니라 `builder` 에서 감싼다.** 팝업은 `showModalBottomSheet`
       // 로 Navigator 위에 뜨므로 페이지 아래에 둔 Scope 를 보지 못한다.
       builder: (context, child) => AppThemeScope(theme: t, child: child!),
+      // **`key` 를 팔레트에 묶지 않는다.** 그러면 바다를 바꿀 때마다 State 가
+      // 새로 생겨 지도와 저장소를 다시 읽고 확대 위치·선택이 초기화된다
+      // (Codex 22회차).
       home: MapSpikePage(
         sea: _sea,
         mapLoader: widget.mapLoader,
         storeOpener: widget.storeOpener,
+        // **지도 화면의 context 를 받아서 push 한다.** 여기(앱 최상위)의 context
+        // 는 `MaterialApp` 보다 위라 Navigator 를 찾지 못한다.
+        onOpenSettings: (ctx) => Navigator.of(ctx).push<void>(
+          MaterialPageRoute(
+            builder: (_) => SettingsPage(
+              seaName: _sea.name,
+              seaLocked: _seaLocked,
+              onSeaChanged: _changeSea,
+            ),
+          ),
+        ),
       ),
     );
   }
+}
+
+/// 설정 파일을 아예 열지 못했을 때.
+///
+/// 읽기는 비어 있다 — 설정이 없어도 앱은 돈다. **쓰기는 실패시킨다.**
+/// 조용히 버리면 사용자가 저장된 줄 알고 앱을 껐다 켰을 때 되돌아간다
+/// (Codex 22회차). 실패로 올려야 `_changeSea` 가 안내를 띄운다.
+class _NullSettingsStorage implements SettingsStorage {
+  @override
+  Future<String?> read() async => null;
+  @override
+  Future<void> writeAtomically(String contents) =>
+      Future.error(StateError('설정 저장소를 열지 못했다'));
 }
 
 /// T2 지도 렌더 스파이크.
@@ -98,11 +230,16 @@ class MapSpikePage extends StatefulWidget {
     required this.sea,
     this.mapLoader,
     this.storeOpener,
+    this.onOpenSettings,
   });
 
   final SeaPalette sea;
   final MapLoader? mapLoader;
   final StoreOpener? storeOpener;
+
+  /// 설정 화면 열기. 지도 화면의 `BuildContext` 를 넘겨 준다 —
+  /// 앱 최상위 context 로는 Navigator 를 찾지 못한다.
+  final void Function(BuildContext)? onOpenSettings;
 
   @override
   State<MapSpikePage> createState() => _MapSpikePageState();
@@ -496,7 +633,21 @@ class _MapSpikePageState extends State<MapSpikePage>
                               left: 12,
                               right: 12,
                               top: 10,
-                              child: _SearchBar(onTap: () => _openSearch(d)),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _SearchBar(
+                                        onTap: () => _openSearch(d)),
+                                  ),
+                                  if (widget.onOpenSettings != null) ...[
+                                    const SizedBox(width: 8),
+                                    _SettingsButton(
+                                      onTap: () =>
+                                          widget.onOpenSettings!(context),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -1243,6 +1394,40 @@ class _SearchBar extends StatelessWidget {
               Text('지역 검색',
                   style: TextStyle(color: t.onSurfaceFaint, fontSize: 14)),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 설정 진입. 검색줄 오른쪽에 붙는다.
+///
+/// **최소 48×48 을 지킨다.** 지도 위에 얹히는 작은 버튼이라 더 줄이면
+/// 누르기 어렵다.
+class _SettingsButton extends StatelessWidget {
+  const _SettingsButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppThemeScope.of(context);
+    return Material(
+      color: t.surface,
+      elevation: 2,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        key: const Key('openSettings'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Semantics(
+            button: true,
+            label: '설정',
+            child: Icon(Icons.settings, size: 20, color: t.onSurfaceMuted),
           ),
         ),
       ),
