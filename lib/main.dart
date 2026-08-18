@@ -9,6 +9,7 @@ import 'app_theme.dart';
 import 'collection.dart';
 import 'collection_store.dart';
 import 'frame_stats.dart';
+import 'gallery_page.dart';
 import 'hit_test.dart';
 import 'map_data.dart';
 import 'map_painter.dart';
@@ -299,6 +300,15 @@ class _MapSpikePageState extends State<MapSpikePage>
 
   RegionHitTester? _hitTester;
   Region? _selected;
+
+  /// 하단 탭. 0 = 지도, 1 = 갤러리.
+  ///
+  /// **이 State 가 탭까지 소유한다.** 지도의 확대·이동(`_tc`)과 Picture 캐시
+  /// (`_cache`·`_seaCache`), 저장소(`_store`)가 전부 여기 있어서, 탭을 앱
+  /// 최상위로 올리고 지도를 조건부로 만들면 전환할 때마다 State 가 폐기돼
+  /// **지도와 저장소를 다시 읽고 확대 위치가 초기화된다**(Codex 23회차).
+  /// `IndexedStack` 으로 둘을 함께 살려 둔다.
+  int _tab = 0;
 
   @override
   void initState() {
@@ -621,8 +631,48 @@ class _MapSpikePageState extends State<MapSpikePage>
               )
             : d == null
                 ? const Center(child: CircularProgressIndicator())
-                : Column(
+                : IndexedStack(
+                    index: _tab,
                     children: [
+                      _buildMapTab(d),
+                      GalleryPage(
+                        data: d,
+                        // **원본 스냅샷을 매 build 마다 그대로 넘긴다.**
+                        // 갤러리가 자기 State 에 복사하면 지도 탭에서 긁고
+                        // 돌아왔을 때 stale 이 된다.
+                        snapshot: _store?.snapshot ?? CollectionSnapshot.empty,
+                        // **기존 팝업 경로를 그대로 탄다.** 저장 불가 상태에서
+                        // 긁기 화면을 막는 게이트가 `_openRegion` 안에 있다.
+                        onOpenRegion: (r) => _openRegion(r, d),
+                      ),
+                    ],
+                  ),
+      ),
+      bottomNavigationBar: (_error != null || d == null)
+          ? null
+          : NavigationBar(
+              selectedIndex: _tab,
+              onDestinationSelected: (i) => setState(() => _tab = i),
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.map_outlined),
+                  selectedIcon: Icon(Icons.map),
+                  label: '지도',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.photo_library_outlined),
+                  selectedIcon: Icon(Icons.photo_library),
+                  label: '갤러리',
+                ),
+              ],
+            ),
+    );
+  }
+
+  /// 지도 탭의 내용. 원래 `build` 안에 있던 것을 그대로 옮겼다.
+  Widget _buildMapTab(MapData d) {
+    return Column(
+      children: [
                       Expanded(
                         child: Stack(
                           children: [
@@ -686,8 +736,6 @@ class _MapSpikePageState extends State<MapSpikePage>
                             : () => setState(() => _demoFill = !_demoFill),
                       ),
                     ],
-                  ),
-      ),
     );
   }
 
@@ -706,6 +754,8 @@ class _MapSpikePageState extends State<MapSpikePage>
               }
             : _scratched;
         Widget map = CustomPaint(
+          // 탭 전환이 지도 State 를 버리지 않는지 테스트가 이 key 로 확인한다.
+          key: const Key('koreaMap'),
           painter: KoreaMapPainter(
             data: d,
             scratched: painted,
