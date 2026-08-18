@@ -13,6 +13,7 @@ import 'gallery_page.dart';
 import 'hit_test.dart';
 import 'map_data.dart';
 import 'map_painter.dart';
+import 'records_page.dart';
 import 'region_art.dart';
 import 'region_description.dart';
 import 'region_search.dart';
@@ -71,6 +72,7 @@ class MapScratchApp extends StatefulWidget {
     this.storeOpener,
     this.settingsOpener,
     this.settings,
+    this.showDiagnostics,
   })  : assert(settings == null || settingsOpener == null,
             '설정 입구는 하나만 쓴다 — 둘 다 주면 settings 가 조용히 이긴다');
 
@@ -86,6 +88,10 @@ class MapScratchApp extends StatefulWidget {
   final MapLoader? mapLoader;
   final StoreOpener? storeOpener;
   final SettingsOpener? settingsOpener;
+
+  /// S1 진단 UI 노출 여부. `null` 이면 `!kReleaseMode` 다.
+  /// 테스트가 **릴리스 구성**을 재현하려고 `false` 를 준다.
+  final bool? showDiagnostics;
 
   @override
   State<MapScratchApp> createState() => _MapScratchAppState();
@@ -194,6 +200,7 @@ class _MapScratchAppState extends State<MapScratchApp> {
         sea: _sea,
         mapLoader: widget.mapLoader,
         storeOpener: widget.storeOpener,
+        showDiagnostics: widget.showDiagnostics,
         // **지도 화면의 context 를 받아서 push 한다.** 여기(앱 최상위)의 context
         // 는 `MaterialApp` 보다 위라 Navigator 를 찾지 못한다.
         onOpenSettings: (ctx) => Navigator.of(ctx).push<void>(
@@ -232,7 +239,18 @@ class MapSpikePage extends StatefulWidget {
     this.mapLoader,
     this.storeOpener,
     this.onOpenSettings,
+    this.showDiagnostics,
   });
+
+  /// S1 진단 UI(프레임 통계·벤치마크·시도선·3배 확대·데모 채움)를 보일지.
+  ///
+  /// 기본값은 **`!kReleaseMode`** 다 — 성능 측정은 profile 에서 하므로
+  /// `kDebugMode` 로 막으면 정작 필요한 곳에서 사라진다(2026-08-15 실기기).
+  ///
+  /// **테스트가 갈아 끼울 수 있게 열어 뒀다.** `kReleaseMode` 는 컴파일 타임
+  /// 상수라 위젯 테스트에서 뒤집을 수 없어, 이 seam 이 없으면 "릴리스에서는
+  /// 사라진다" 를 아무 테스트도 지나가지 않는다(Codex 25회차).
+  final bool? showDiagnostics;
 
   final SeaPalette sea;
   final MapLoader? mapLoader;
@@ -301,19 +319,54 @@ class _MapSpikePageState extends State<MapSpikePage>
   RegionHitTester? _hitTester;
   Region? _selected;
 
-  /// 하단 탭. 0 = 지도, 1 = 갤러리.
+  bool get _diagnostics => widget.showDiagnostics ?? !kReleaseMode;
+
+  /// 진단이 켜져 있을 때만 프레임을 잰다.
+  ///
+  /// **`initState` 한 번으로 끝내지 않는다.** `showDiagnostics` 가 바뀌면 UI 는
+  /// getter 라 따라오는데 수집은 안 따라와, 바가 나타났는데 계속 0 이거나
+  /// 바가 사라졌는데 콜백이 남는다(Codex 25회차). 제품에는 바꾸는 경로가
+  /// 없지만 테스트가 이미 그렇게 쓰고 있다.
+  void _syncStats() {
+    if (_diagnostics || _autoBench) {
+      _stats.start();
+    } else {
+      _stats.stop();
+    }
+  }
+
+  @override
+  void didUpdateWidget(MapSpikePage old) {
+    super.didUpdateWidget(old);
+    if (old.showDiagnostics == widget.showDiagnostics) return;
+    _syncStats();
+    // **진단을 끄면 진단으로 만든 상태도 되돌린다.** 수집만 멈추면 수동
+    // 벤치마크가 계속 돌고 데모 채움이 지도에 남아, seam 이 "릴리스 구성" 을
+    // 온전히 재현하지 못한다(Codex 26회차).
+    //
+    // `_autoBench` 중에는 멈추지 않는다 — 성능 측정 하네스가 끊긴다.
+    if (!_diagnostics && !_autoBench) {
+      if (_benchmarking) _toggleBenchmark();
+      _demoFill = false;
+      _sidoLines = true;
+    }
+  }
+
+  /// 하단 탭. 0 = 지도, 1 = 갤러리, 2 = 기록.
   ///
   /// **이 State 가 탭까지 소유한다.** 지도의 확대·이동(`_tc`)과 Picture 캐시
   /// (`_cache`·`_seaCache`), 저장소(`_store`)가 전부 여기 있어서, 탭을 앱
   /// 최상위로 올리고 지도를 조건부로 만들면 전환할 때마다 State 가 폐기돼
   /// **지도와 저장소를 다시 읽고 확대 위치가 초기화된다**(Codex 23회차).
-  /// `IndexedStack` 으로 둘을 함께 살려 둔다.
+  /// `IndexedStack` 으로 셋을 함께 살려 둔다.
   int _tab = 0;
 
   @override
   void initState() {
     super.initState();
-    _stats.start();
+    // **화면에 안 보이면 재지도 않는다.** `_StatsBar` 만 감추면 타이밍 콜백은
+    // 매 프레임 계속 돌아 릴리스에 쓰지 않는 일이 남는다(Codex 25회차).
+    _syncStats();
     _bench = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 8),
@@ -645,6 +698,10 @@ class _MapSpikePageState extends State<MapSpikePage>
                         // 긁기 화면을 막는 게이트가 `_openRegion` 안에 있다.
                         onOpenRegion: (r) => _openRegion(r, d),
                       ),
+                      // **파생 상태를 넘긴다.** 기록 탭은 수집일시·메모가
+                      // 필요 없고, `_scratched` 는 이미 카탈로그와 교집합돼 있어
+                      // 알 수 없는 ID 가 달성률에 섞이지 않는다.
+                      RecordsPage(data: d, scratched: _scratched),
                     ],
                   ),
       ),
@@ -663,6 +720,11 @@ class _MapSpikePageState extends State<MapSpikePage>
                   icon: Icon(Icons.photo_library_outlined),
                   selectedIcon: Icon(Icons.photo_library),
                   label: '갤러리',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.emoji_events_outlined),
+                  selectedIcon: Icon(Icons.emoji_events),
+                  label: '기록',
                 ),
               ],
             ),
@@ -702,6 +764,12 @@ class _MapSpikePageState extends State<MapSpikePage>
                           ],
                         ),
                       ),
+                      // **S1 스파이크 잔재라 릴리스에서는 내보내지 않는다.**
+                      // 벤치마크·시도선·3배 확대·데모 채움은 최종 사용자 UI 가
+                      // 아닌데 릴리스에도 나오고 있었다. 게다가 이 자리가
+                      // 세로 공간을 크게 먹어, M6 하단 탭 도입 뒤 360×640 에서
+                      // 지도 폭이 278.1 → 215.3 까지 줄었다(Codex 24회차).
+                      if (_diagnostics) ...[
                       _StatsBar(
                         stats: _stats,
                         data: d,
@@ -735,6 +803,7 @@ class _MapSpikePageState extends State<MapSpikePage>
                             ? null
                             : () => setState(() => _demoFill = !_demoFill),
                       ),
+                      ],
                     ],
     );
   }

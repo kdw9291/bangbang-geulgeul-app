@@ -55,6 +55,19 @@ class FrameStats extends ChangeNotifier {
     SchedulerBinding.instance.addTimingsCallback(_onTimings);
   }
 
+  /// 지금 프레임 타이밍을 받고 있는가. 진단을 껐는데 콜백이 남아 있는지를
+  /// 테스트가 이걸로 본다.
+  @visibleForTesting
+  bool get listening => _listening;
+
+  /// 수집을 멈춘다. 진단을 끄면 콜백을 떼야 한다 — UI 만 감추면
+  /// 쓰지 않는 집계가 매 프레임 계속 돈다(Codex 25회차).
+  void stop() {
+    if (!_listening) return;
+    SchedulerBinding.instance.removeTimingsCallback(_onTimings);
+    _listening = false;
+  }
+
   @visibleForTesting
   void ingest(List<FrameTiming> timings) => _onTimings(timings);
 

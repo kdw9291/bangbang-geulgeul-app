@@ -25,6 +25,59 @@ class SidoProgress {
   String toString() => '$sidoName $collected/$total';
 }
 
+/// 전체와 시도 16개를 **한 번에** 구한 요약.
+///
+/// 기록 화면이 쓴다. 시도마다 [sidoProgressOf] 를 부르면 232개를 16번 훑는데,
+/// 비용보다 **모집단 규칙이 두 곳으로 갈라지는 것**이 문제다(Codex 25회차).
+/// 전체 수집 수도 여기서 나온 시도별 합이라 서로 어긋날 수 없다.
+class CollectionSummary {
+  const CollectionSummary({
+    required this.collected,
+    required this.total,
+    required this.sidos,
+  });
+
+  /// **카탈로그를 훑어 센 값이다.** 넘겨받은 집합의 크기가 아니다 —
+  /// 그것을 쓰면 알 수 없는 ID 까지 세어 233/232 가 된다(M1 계약).
+  final int collected;
+  final int total;
+
+  /// `data.sidoNames` 와 **같은 순서**다. 달성률로 재정렬하지 않는다 —
+  /// 긁을 때마다 행이 움직이면 "그 줄이 거기 있었다" 는 기억이 깨진다.
+  final List<SidoProgress> sidos;
+
+  int get remaining => total - collected;
+  double get ratio => total == 0 ? 0 : collected / total;
+  bool get complete => total > 0 && collected == total;
+}
+
+/// 전체와 시도별 진행률을 한 번의 순회로 구한다.
+CollectionSummary collectionSummaryOf(MapData data, Set<String> scratched) {
+  final n = data.sidoNames.length;
+  final collected = List<int>.filled(n, 0);
+  final total = List<int>.filled(n, 0);
+  var all = 0;
+  for (final r in data.regions) {
+    total[r.sido]++;
+    if (scratched.contains(r.scratchUnitId)) {
+      collected[r.sido]++;
+      all++;
+    }
+  }
+  return CollectionSummary(
+    collected: all,
+    total: data.regions.length,
+    sidos: [
+      for (var i = 0; i < n; i++)
+        SidoProgress(
+          sidoName: data.sidoNames[i],
+          collected: collected[i],
+          total: total[i],
+        ),
+    ],
+  );
+}
+
 /// [sidoIndex] 시도의 진행률.
 ///
 /// **통합 단위는 1/1 이 된다.** 서울·제주는 시도 전체가 긁기 단위 하나여서,
