@@ -5,6 +5,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 
+import 'achievement.dart';
+import 'app_flags.dart';
 import 'app_theme.dart';
 import 'collection.dart';
 import 'collection_store.dart';
@@ -14,6 +16,7 @@ import 'hit_test.dart';
 import 'map_data.dart';
 import 'map_inset_panel.dart';
 import 'map_painter.dart';
+import 'medal_celebration.dart';
 import 'records_page.dart';
 import 'region_art.dart';
 import 'region_description.dart';
@@ -74,6 +77,7 @@ class MapScratchApp extends StatefulWidget {
     this.settingsOpener,
     this.settings,
     this.showDiagnostics,
+    this.showInset,
   })  : assert(settings == null || settingsOpener == null,
             '설정 입구는 하나만 쓴다 — 둘 다 주면 settings 가 조용히 이긴다');
 
@@ -93,6 +97,10 @@ class MapScratchApp extends StatefulWidget {
   /// S1 진단 UI 노출 여부. `null` 이면 `!kReleaseMode` 다.
   /// 테스트가 **릴리스 구성**을 재현하려고 `false` 를 준다.
   final bool? showDiagnostics;
+
+  /// 도심 확대 인셋 노출 여부. `null` 이면 [kShowMapInset] 다.
+  /// 인셋 테스트가 `true` 를 줘서 기능 자체는 계속 검증한다.
+  final bool? showInset;
 
   @override
   State<MapScratchApp> createState() => _MapScratchAppState();
@@ -202,6 +210,7 @@ class _MapScratchAppState extends State<MapScratchApp> {
         mapLoader: widget.mapLoader,
         storeOpener: widget.storeOpener,
         showDiagnostics: widget.showDiagnostics,
+        showInset: widget.showInset,
         // **지도 화면의 context 를 받아서 push 한다.** 여기(앱 최상위)의 context
         // 는 `MaterialApp` 보다 위라 Navigator 를 찾지 못한다.
         onOpenSettings: (ctx) => Navigator.of(ctx).push<void>(
@@ -241,7 +250,11 @@ class MapSpikePage extends StatefulWidget {
     this.storeOpener,
     this.onOpenSettings,
     this.showDiagnostics,
+    this.showInset,
   });
+
+  /// 도심 확대 인셋 노출 여부. `null` 이면 [kShowMapInset] 다.
+  final bool? showInset;
 
   /// S1 진단 UI(프레임 통계·벤치마크·시도선·3배 확대·데모 채움)를 보일지.
   ///
@@ -321,6 +334,8 @@ class _MapSpikePageState extends State<MapSpikePage>
   Region? _selected;
 
   bool get _diagnostics => widget.showDiagnostics ?? !kReleaseMode;
+
+  bool get _inset => widget.showInset ?? kShowMapInset;
 
   /// 진단이 켜져 있을 때만 프레임을 잰다.
   ///
@@ -632,6 +647,11 @@ class _MapSpikePageState extends State<MapSpikePage>
     if (store == null || d == null) {
       throw StateError('저장소가 아직 준비되지 않았다');
     }
+    // **메달은 긁기 전후를 비교해서 안다.** 저장하지 않으므로 그 두 값이
+    // 같은 호출 안에 있어야 "새로 땄다" 를 알 수 있다(M7 에서 연출을 뺀 이유).
+    final medals = MedalSet.of(d);
+    final before = medals.achievedCount(_scratched.length);
+
     final next = await store.collect(unit);
     if (!mounted) return;
     setState(() {
@@ -639,6 +659,24 @@ class _MapSpikePageState extends State<MapSpikePage>
     });
     debugPrint('[SCRATCH] 지도 반영 ${unit.scratchUnitId} · '
         '수집 ${_scratched.length}/${d.regions.length}');
+
+    // **저장에 성공해야 축하한다.** 실패하면 위에서 예외가 올라가 긁기 화면이
+    // 재시도를 띄우고 여기까지 오지 않는다.
+    final after = medals.achievedCount(_scratched.length);
+    if (after <= before) return;
+    // 새로 열린 것 중 가장 높은 메달 하나만 축하한다. 임계치 간격이 넓어
+    // 한 번에 둘이 열리는 일은 없지만, 생겨도 조용히 삼키지 않는다.
+    final earned = medals.medals[after - 1];
+    // **기다리지 않는다.** 긁기 화면은 `onCollected` 가 끝나야 "기록하는 중" 을
+    // 지우고 이탈을 허용한다(M1). 여기서 팝업이 닫힐 때까지 기다리면 저장이
+    // 이미 끝났는데도 저장 중으로 보이고 화면을 나갈 수 없다 — 실기기에서
+    // 눈으로 보고 찾았다.
+    unawaited(showMedalCelebration(
+      context,
+      medal: earned,
+      collected: _scratched.length,
+      total: d.regions.length,
+    ));
   }
 
   /// 팝업이 메모를 저장할 때 부른다. **저장에 성공한 레코드**를 돌려준다.
@@ -757,7 +795,7 @@ class _MapSpikePageState extends State<MapSpikePage>
                             // 감춘다.** 568px 폭에 그 줄과 390px 판을 함께 두면
                             // 39px 넘친다. 판에는 자체 지역 목록이 있고, 판을
                             // 닫으면 곧바로 돌아온다(Codex 28회차).
-                            if (!(_insetOpen && shouldUseWideInset(area.biggest)))
+                            if (!(_inset && _insetOpen && shouldUseWideInset(area.biggest)))
                             Positioned(
                               left: 12,
                               right: 12,
@@ -784,6 +822,7 @@ class _MapSpikePageState extends State<MapSpikePage>
                             // 안에 넣으면 같은 탭을 지도가 또 받는다.
                             // 여기 두면 확대와 무관하고 탭도 인셋이 먼저 먹는다
                             // (Codex 27회차).
+                            if (_inset)
                             Positioned(
                               // **key 는 `Stack` 의 직접 자식에 준다.** 가로에서
                               // 판을 펼치면 검색줄이 트리에서 빠져 자식 순서가

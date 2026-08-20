@@ -57,6 +57,9 @@ void main() {
       settingsOpener: () async => SettingsStore(_MemSettings()),
       mapLoader: () async => realMap,
       showDiagnostics: showDiagnostics,
+      // **인셋은 기본이 꺼짐이다**(2026-08-19 M10). 기능 자체는 계속
+      // 검증해야 하므로 테스트가 켠다. 기본값이 꺼짐인 것은 아래 별도 검사.
+      showInset: true,
       storeOpener: () async {
         final store = CollectionStore(_MemStorage(stored));
         final result = await store.load();
@@ -93,6 +96,31 @@ void main() {
 
   Region regionOf(String id) =>
       realMap.regions.firstWhere((r) => r.scratchUnitId == id);
+
+  group('기본 노출', () {
+    testWidgets('flag 를 주지 않으면 인셋이 아예 없다', (tester) async {
+      // M10 에서 "검색을 더 쓴다" 로 판단해 화면에서 뺐다. 코드는 남아 있고
+      // `kShowMapInset` 만 바꾸면 돌아온다.
+      await tester.pumpWidget(MapScratchApp(
+        settingsOpener: () async => SettingsStore(_MemSettings()),
+        mapLoader: () async => realMap,
+        showDiagnostics: false,
+        storeOpener: () async {
+          final store = CollectionStore(_MemStorage(null));
+          return (store, await store.load());
+        },
+      ));
+      await tester.pump();
+      await tester.runAsync(() => Future<void>.value());
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(const Key('insetToggle')), findsNothing);
+      expect(find.byKey(const Key('insetPanel')), findsNothing);
+      // 지도는 정상이어야 한다.
+      expect(find.byKey(const Key('koreaMap')), findsOneWidget);
+    });
+  });
 
   group('접기', () {
     testWidgets('기본은 접혀 있고 판이 트리에 없다', (tester) async {
