@@ -45,7 +45,10 @@ void main() {
     );
   }
 
-  Future<void> open(WidgetTester tester, {Set<String> scratched = const {}}) async {
+  Future<void> open(
+    WidgetTester tester, {
+    Set<String> scratched = const {},
+  }) async {
     await tester.pumpWidget(wrap(scratched: scratched));
     await tester.tap(find.text('열기'));
     await tester.pumpAndSettle();
@@ -71,8 +74,11 @@ void main() {
 
     // `ㅅㅊ` 는 여러 곳이 걸리므로 순천시는 목록 아래에 있다.
     // **스크롤해서 닿는지**까지 봐야 검색이 쓸모 있다고 할 수 있다.
-    await tester.scrollUntilVisible(find.text('순천시'), 120,
-        scrollable: find.byType(Scrollable).last);
+    await tester.scrollUntilVisible(
+      find.text('순천시'),
+      120,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('순천시'), findsOneWidget);
   });
 
@@ -87,15 +93,16 @@ void main() {
   });
 
   testWidgets('동명 지역은 시도명을 함께 보여준다', (tester) async {
-    // 시도명이 없으면 `중구` 여섯 곳 중 어디인지 고를 수 없다.
+    // 시도명이 없으면 `고성군` 두 곳 중 어디인지 고를 수 없다.
+    // (2026-08-20 광역시 통합 전에는 `중구` 여섯 곳으로 검사했다.)
     await open(tester);
-    await type(tester, '중구');
+    await type(tester, '고성군');
 
     final rows = find.byType(ListTile);
     expect(tester.widgetList(rows).length, greaterThan(1));
     // 각 행에 서로 다른 시도명이 붙어 있어야 한다.
-    expect(find.text('부산광역시'), findsOneWidget);
-    expect(find.text('대구광역시'), findsOneWidget);
+    expect(find.text('강원특별자치도'), findsOneWidget);
+    expect(find.text('경상남도'), findsOneWidget);
   });
 
   testWidgets('지역명과 시도명이 같으면 한 번만 쓴다', (tester) async {

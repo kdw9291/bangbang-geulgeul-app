@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 
 import 'achievement.dart';
-import 'app_flags.dart';
 import 'app_theme.dart';
 import 'collection.dart';
 import 'collection_store.dart';
@@ -14,7 +13,6 @@ import 'frame_stats.dart';
 import 'gallery_page.dart';
 import 'hit_test.dart';
 import 'map_data.dart';
-import 'map_inset_panel.dart';
 import 'map_painter.dart';
 import 'medal_celebration.dart';
 import 'records_page.dart';
@@ -77,7 +75,6 @@ class MapScratchApp extends StatefulWidget {
     this.settingsOpener,
     this.settings,
     this.showDiagnostics,
-    this.showInset,
   })  : assert(settings == null || settingsOpener == null,
             '설정 입구는 하나만 쓴다 — 둘 다 주면 settings 가 조용히 이긴다');
 
@@ -97,10 +94,6 @@ class MapScratchApp extends StatefulWidget {
   /// S1 진단 UI 노출 여부. `null` 이면 `!kReleaseMode` 다.
   /// 테스트가 **릴리스 구성**을 재현하려고 `false` 를 준다.
   final bool? showDiagnostics;
-
-  /// 도심 확대 인셋 노출 여부. `null` 이면 [kShowMapInset] 다.
-  /// 인셋 테스트가 `true` 를 줘서 기능 자체는 계속 검증한다.
-  final bool? showInset;
 
   @override
   State<MapScratchApp> createState() => _MapScratchAppState();
@@ -210,7 +203,6 @@ class _MapScratchAppState extends State<MapScratchApp> {
         mapLoader: widget.mapLoader,
         storeOpener: widget.storeOpener,
         showDiagnostics: widget.showDiagnostics,
-        showInset: widget.showInset,
         // **지도 화면의 context 를 받아서 push 한다.** 여기(앱 최상위)의 context
         // 는 `MaterialApp` 보다 위라 Navigator 를 찾지 못한다.
         onOpenSettings: (ctx) => Navigator.of(ctx).push<void>(
@@ -241,7 +233,7 @@ class _NullSettingsStorage implements SettingsStorage {
 }
 
 /// T2 지도 렌더 스파이크.
-/// 목적은 두 가지다 — 232개 폴리곤이 렌더되는가, 확대·이동 중 60fps 가 유지되는가.
+/// 목적은 두 가지다 — 193개 폴리곤이 렌더되는가, 확대·이동 중 60fps 가 유지되는가.
 class MapSpikePage extends StatefulWidget {
   const MapSpikePage({
     super.key,
@@ -250,11 +242,7 @@ class MapSpikePage extends StatefulWidget {
     this.storeOpener,
     this.onOpenSettings,
     this.showDiagnostics,
-    this.showInset,
   });
-
-  /// 도심 확대 인셋 노출 여부. `null` 이면 [kShowMapInset] 다.
-  final bool? showInset;
 
   /// S1 진단 UI(프레임 통계·벤치마크·시도선·3배 확대·데모 채움)를 보일지.
   ///
@@ -335,8 +323,6 @@ class _MapSpikePageState extends State<MapSpikePage>
 
   bool get _diagnostics => widget.showDiagnostics ?? !kReleaseMode;
 
-  bool get _inset => widget.showInset ?? kShowMapInset;
-
   /// 진단이 켜져 있을 때만 프레임을 잰다.
   ///
   /// **`initState` 한 번으로 끝내지 않는다.** `showDiagnostics` 가 바뀌면 UI 는
@@ -368,12 +354,6 @@ class _MapSpikePageState extends State<MapSpikePage>
     }
   }
 
-  /// 인셋 판이 펼쳐져 있는가. **판이 스스로 알려 준다.**
-  ///
-  /// 가로 화면에서는 판이 좌우 배치라 폭이 약 390 이다. 검색줄이 화면 전체를
-  /// 가로지르면 판이 그 아래로 밀려 세로 공간을 잃고 캔버스가 눌린다.
-  /// 펼쳐져 있을 때만 검색줄을 왼쪽으로 물린다(Codex 28회차).
-  bool _insetOpen = false;
 
   /// 하단 탭. 0 = 지도, 1 = 갤러리, 2 = 기록.
   ///
@@ -782,20 +762,11 @@ class _MapSpikePageState extends State<MapSpikePage>
     return Column(
       children: [
                       Expanded(
-                        // 인셋 판이 **지도 영역** 높이를 알아야 한다.
-                        // 화면 높이로 자르면 아래에 고정된 판이 위로 밀려
-                        // 머리글과 닫기 버튼이 화면 밖으로 나간다.
-                        child: LayoutBuilder(
-                          builder: (context, area) => Stack(
-                            children: [
+                        child: Stack(
+                          children: [
                               Positioned.fill(child: _buildMap(d)),
                             // 검색은 지도 위에 얹는다. 지도를 가리지 않게
                             // 상단에 얇게 두고, 누르면 시트가 열린다.
-                            // **좌우 배치로 판을 펼치면 상단 검색·설정 줄을
-                            // 감춘다.** 568px 폭에 그 줄과 390px 판을 함께 두면
-                            // 39px 넘친다. 판에는 자체 지역 목록이 있고, 판을
-                            // 닫으면 곧바로 돌아온다(Codex 28회차).
-                            if (!(_inset && _insetOpen && shouldUseWideInset(area.biggest)))
                             Positioned(
                               left: 12,
                               right: 12,
@@ -817,60 +788,7 @@ class _MapSpikePageState extends State<MapSpikePage>
                                 ],
                               ),
                             ),
-                            // **인셋은 지도의 형제다.** `InteractiveViewer` 안에
-                            // 넣으면 확대·이동을 따라가고, 지도 `GestureDetector`
-                            // 안에 넣으면 같은 탭을 지도가 또 받는다.
-                            // 여기 두면 확대와 무관하고 탭도 인셋이 먼저 먹는다
-                            // (Codex 27회차).
-                            if (_inset)
-                            Positioned(
-                              // **key 는 `Stack` 의 직접 자식에 준다.** 가로에서
-                              // 판을 펼치면 검색줄이 트리에서 빠져 자식 순서가
-                              // 바뀌는데, `Positioned` 에 key 가 없으면 순서로
-                              // 짝을 맞추다 판의 State 가 폐기돼 펼침이 즉시
-                              // 풀린다. 안쪽 위젯에 줘도 소용없다(Codex 28회차).
-                              key: const ValueKey('insetPanelSlot'),
-                              right: 12,
-                              bottom: 12,
-                              child: MapInsetPanel(
-                                // 검색줄 자리를 빼고 남는 높이만 쓴다.
-                                //
-                                // **고정값으로 빼면 안 된다.** 검색줄은 큰
-                                // 글꼴에서 커지는데 판 상단은 그대로라, 가로
-                                // 화면 + 2.5배 글꼴에서 7px 겹쳤다
-                                // (Codex 28회차 추측 → 테스트로 재현).
-                                wide: shouldUseWideInset(area.biggest),
-                                onOpenChanged: (v) =>
-                                    setState(() => _insetOpen = v),
-                                // 좌우 배치일 때는 검색줄과 비켜 서므로 세로를
-                                // 거의 다 쓴다. 세로 배치일 때만 검색줄 자리를
-                                // 뺀다 — 고정값으로 빼면 큰 글꼴에서 겹친다.
-                                maxHeight: (shouldUseWideInset(area.biggest)
-                                        ? area.maxHeight - 24
-                                        : area.maxHeight -
-                                            MediaQuery.textScalerOf(context)
-                                                .scale(56) -
-                                            20)
-                                    // **하한을 두지 않는다.** 120 을 보장하면
-                                    // 지도 영역이 그보다 짧을 때 판이 영역을
-                                    // 넘어 위쪽이 잘린다 — debug 가로에서
-                                    // 진단 UI 때문에 지도가 210px 로 눌리자
-                                    // 실제로 그렇게 됐다. 남는 만큼만 쓰고
-                                    // 모자라면 판 안에서 스크롤한다.
-                                    .clamp(0.0, double.infinity),
-                                data: d,
-                                scratched: _scratched,
-                                selected: _selected,
-                                onOpenRegion: (r) {
-                                  // 본지도와 선택을 맞춘다 — 인셋에서 고른 곳이
-                                  // 지도에서도 외곽선으로 보여야 한다.
-                                  setState(() => _selected = r);
-                                  return _openRegion(r, d);
-                                },
-                              ),
-                            ),
                           ],
-                          ),
                         ),
                       ),
                       // **S1 스파이크 잔재라 릴리스에서는 내보내지 않는다.**
@@ -1025,7 +943,7 @@ class _MapSpikePageState extends State<MapSpikePage>
 /// - 수집 후: 아트를 공개하고 설명·수집일·메모·시도 진행률을 함께 보여준다 —
 ///   상태 통보가 아니라 성취 표시로
 ///
-/// 양쪽 모두 **시도 진행률**을 넣는다. 232번 반복되는 고정 문구만 두면
+/// 양쪽 모두 **시도 진행률**을 넣는다. 193번 반복되는 고정 문구만 두면
 /// 수집 앱으로서 심심하고, 다음 목표도 보이지 않는다.
 /// 메모 저장 콜백. 저장에 **성공한 레코드**를 돌려주고, 실패는 예외로 올린다.
 typedef MemoSaver = Future<CollectedUnit> Function(

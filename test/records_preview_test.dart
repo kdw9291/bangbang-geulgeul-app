@@ -74,10 +74,10 @@ void main() {
   testWidgets('빈 상태 — 라이트',
       (t) async => shoot(t, 'empty_light', kThemeLight, 0));
   testWidgets('전부 — 다크',
-      (t) async => shoot(t, 'all_dark', kThemeDark, 232));
+      (t) async => shoot(t, 'all_dark', kThemeDark, 193));
   testWidgets('60곳 — 다크', (t) async => shoot(t, 'some_dark', kThemeDark, 60));
   testWidgets('60곳 — 라이트',
       (t) async => shoot(t, 'some_light', kThemeLight, 60));
   testWidgets('전부 — 라이트',
-      (t) async => shoot(t, 'all_light', kThemeLight, 232));
+      (t) async => shoot(t, 'all_light', kThemeLight, 193));
 }

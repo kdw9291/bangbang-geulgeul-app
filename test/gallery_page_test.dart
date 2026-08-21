@@ -123,7 +123,7 @@ void main() {
   /// 갤러리를 **바닥까지 훑으면서** 매 화면에서 [check] 를 돌린다.
   ///
   /// `SliverList` 는 화면에 보이는 줄만 만든다. 한 화면만 보고 검사하면
-  /// 37개 중 두어 개만 확인하고 통과한다 — 처음 쓴 유출 테스트가 정확히
+  /// 32개 중 두어 개만 확인하고 통과한다 — 처음 쓴 유출 테스트가 정확히
   /// 그랬다. 이 프로젝트에서 반복된 "테스트가 약했다" 와 같은 유형이다.
   ///
   /// **끌기 횟수로 끝내지 않고 `maxScrollExtent` 로 끝낸다.** 횟수 상한으로
@@ -167,13 +167,13 @@ void main() {
     test('랜드마크 세 집합이 정확히 일치한다', () {
       // 갤러리 목록의 단일 원본이다. 하나라도 어긋나면 `!` 가 터지거나
       // 칸이 비는데, 런타임까지 가기 전에 여기서 잡는다.
-      expect(kPlannedLandmarks.length, 37);
+      expect(kPlannedLandmarks.length, 32);
       expect(kLandmarkArt.keys.toSet(), kPlannedLandmarks);
       expect(kLandmarkDescription.keys.toSet(), kPlannedLandmarks);
     });
 
     testWidgets('랜드마크가 없는 지역은 갤러리에 나오지 않는다', (tester) async {
-      // 232개 전부가 아니라 37개만 늘어놓는다는 결정(2026-08-18).
+      // 193개 전부가 아니라 32개만 늘어놓는다는 결정(2026-08-18).
       await openApp(tester, saved([uiseong]));
       await goGallery(tester);
 
@@ -206,7 +206,7 @@ void main() {
               reason: '미수집인데 랜드마크 이름이 새어 나왔다: $id');
         }
       });
-      expect(seen.length, 37, reason: '검사하지 못하고 지나친 칸이 있다');
+      expect(seen.length, 32, reason: '검사하지 못하고 지나친 칸이 있다');
     });
 
     testWidgets('잠금 카드에는 공개 전용 위젯이 하나도 없다', (tester) async {
@@ -280,30 +280,30 @@ void main() {
   });
 
   group('진행 표시', () {
-    testWidgets('빈 상태는 0/37 이다', (tester) async {
+    testWidgets('빈 상태는 0/32 이다', (tester) async {
       await openApp(tester, null);
       await goGallery(tester);
-      expect(find.text('0/37'), findsOneWidget);
+      expect(find.text('0/32'), findsOneWidget);
     });
 
-    testWidgets('랜드마크 없는 지역만 수집해도 0/37 이다', (tester) async {
-      // `snapshot.length` 를 그대로 쓰면 1/37 이 된다.
+    testWidgets('랜드마크 없는 지역만 수집해도 0/32 이다', (tester) async {
+      // `snapshot.length` 를 그대로 쓰면 1/32 이 된다.
       await openApp(tester, saved([uiseong]));
       await goGallery(tester);
-      expect(find.text('0/37'), findsOneWidget);
+      expect(find.text('0/32'), findsOneWidget);
     });
 
     testWidgets('알 수 없는 ID 는 세지 않는다', (tester) async {
       // 저장은 보존하되 표시에서는 뺀다는 M1 계약이 여기에도 적용된다.
       await openApp(tester, saved(['99999']));
       await goGallery(tester);
-      expect(find.text('0/37'), findsOneWidget);
+      expect(find.text('0/32'), findsOneWidget);
     });
 
-    testWidgets('랜드마크를 수집하면 1/37 이 된다', (tester) async {
+    testWidgets('랜드마크를 수집하면 1/32 이 된다', (tester) async {
       await openApp(tester, saved([gyeongju]));
       await goGallery(tester);
-      expect(find.text('1/37'), findsOneWidget);
+      expect(find.text('1/32'), findsOneWidget);
     });
   });
 
@@ -432,10 +432,10 @@ void main() {
   group('수집 반영', () {
     testWidgets('지도에서 긁으면 갤러리가 곧바로 따라온다', (tester) async {
       // 이번 기능의 핵심 상태 경로다. 갤러리가 스냅샷을 자기 State 에 복사하면
-      // 여기서 0/37 에 머문다(Codex 23회차 High · 24회차 테스트 누락 지적).
+      // 여기서 0/32 에 머문다(Codex 23회차 High · 24회차 테스트 누락 지적).
       await openApp(tester, null);
       await goGallery(tester);
-      expect(find.text('0/37'), findsOneWidget);
+      expect(find.text('0/32'), findsOneWidget);
 
       await goMap(tester);
       await tester.tap(find.text('지역 검색'));
@@ -460,7 +460,7 @@ void main() {
       await tester.pumpAndSettle();
 
       await goGallery(tester);
-      expect(find.text('1/37'), findsOneWidget,
+      expect(find.text('1/32'), findsOneWidget,
           reason: '수집이 갤러리에 반영되지 않았다');
     });
   });
@@ -494,9 +494,9 @@ void main() {
       await openApp(tester, null);
       await goGallery(tester);
 
-      // **37칸 전부에 실제로 닿아야 한다.**
+      // **32칸 전부에 실제로 닿아야 한다.**
       final seen = await sweep(tester, () {});
-      expect(seen.length, 37, reason: '스크롤로 닿지 못한 칸이 있다');
+      expect(seen.length, 32, reason: '스크롤로 닿지 못한 칸이 있다');
       expect(tester.takeException(), isNull);
     });
 

@@ -11,43 +11,16 @@ import 'art_category.dart';
 /// `Region.scratchUnitId` → 카테고리. 랜드마크가 있는 지역도 폴백으로 가진다.
 ///
 /// 키는 통계청 시군구 코드와 대부분 같지만 전부는 아니다 —
-/// 서울 `11000` · 제주 `50000` 은 통합으로 생긴 합성 ID 이고
-/// 독도 `DK001` 은 신설한 긁기 단위라 통계청 네임스페이스 밖이다.
+/// 서울 `11000` · 제주 `50000` 과 2026-08-20 광역시 통합으로 생긴
+/// 부산 `26000` · 대구 `27000` · 인천 `28000` · 대전 `30000` ·
+/// 울산 `31000` 은 합성 ID 이고, 독도 `DK001` 은 신설한 긁기 단위라
+/// 통계청 네임스페이스 밖이다. 인천은 강화군 `28710` · 옹진군 `28720` 이
+/// 통합에서 빠져 그대로 남는다.
 const Map<String, ArtCategory> kRegionCategory = {
   '11000': ArtCategory.city, // 서울 도심 — 25개 구를 합친 긁기 단위
-  '26110': ArtCategory.city, // 부산 도심
-  '26140': ArtCategory.sea, // 부산 해안
-  '26170': ArtCategory.city, // 부산 도심
-  '26200': ArtCategory.sea, // 부산 해안
-  '26230': ArtCategory.city, // 부산 도심
-  '26260': ArtCategory.hotspring, // 동래온천 — 국내 대표 온천지
-  '26290': ArtCategory.sea, // 부산 해안
-  '26320': ArtCategory.city, // 부산 도심
-  '26350': ArtCategory.sea, // 부산 해안
-  '26380': ArtCategory.sea, // 부산 해안
-  '26410': ArtCategory.mountain, // 금정산 — 범어사 랜드마크의 폴백
-  '26440': ArtCategory.river, // 낙동강 하구와 대저·맥도생태공원
-  '26470': ArtCategory.city, // 부산 도심
-  '26500': ArtCategory.sea, // 부산 해안
-  '26530': ArtCategory.city, // 부산 도심
-  '26710': ArtCategory.sea, // 부산 해안
-  '27110': ArtCategory.city, // 대구 도심
-  '27140': ArtCategory.city, // 대구 도심
-  '27170': ArtCategory.city, // 대구 도심
-  '27200': ArtCategory.city, // 대구 도심
-  '27230': ArtCategory.city, // 대구 도심
-  '27260': ArtCategory.city, // 대구 도심
-  '27290': ArtCategory.city, // 대구 도심
-  '27710': ArtCategory.mountain, // 비슬산 — 랜드마크의 폴백
-  '28125': ArtCategory.sea, // 개항장·연안부두
-  '28155': ArtCategory.island, // 영종도 — 완전 섬
-  '28177': ArtCategory.city, // 인천 도심권
-  '28185': ArtCategory.city, // 송도 신도시 — 해안이지만 도시 인상이 앞선다
-  '28200': ArtCategory.city, // 인천 도심권
-  '28237': ArtCategory.city, // 인천 도심권
-  '28245': ArtCategory.city, // 인천 도심권
-  '28275': ArtCategory.city, // 인천 도심권
-  '28290': ArtCategory.city, // 인천 도심권
+  '26000': ArtCategory.sea, // 부산 해안 — 해운대 랜드마크의 폴백
+  '27000': ArtCategory.city, // 대구 도심 — 팔공산 랜드마크의 폴백
+  '28000': ArtCategory.city, // 인천 도심 — 계양산 랜드마크의 폴백
   '28710': ArtCategory.island, // 강화도 — 완전 섬
   '28720': ArtCategory.island, // 옹진군 — 다도해
   '12210': ArtCategory.city, // 광주 도심
@@ -55,16 +28,8 @@ const Map<String, ArtCategory> kRegionCategory = {
   '12270': ArtCategory.city, // 광주 도심
   '12300': ArtCategory.city, // 광주 도심
   '12330': ArtCategory.city, // 광주 도심
-  '30110': ArtCategory.city, // 대전 도심
-  '30140': ArtCategory.city, // 대전 도심
-  '30170': ArtCategory.city, // 대전 도심
-  '30200': ArtCategory.hotspring, // 유성온천 — 국내 대표 온천지
-  '30230': ArtCategory.city, // 대전 도심
-  '31110': ArtCategory.city, // 울산 도심
-  '31140': ArtCategory.sea, // 울산 해안
-  '31170': ArtCategory.sea, // 울산 해안
-  '31200': ArtCategory.sea, // 울산 해안
-  '31710': ArtCategory.mountain, // 영남알프스 — 반구대 랜드마크의 폴백
+  '30000': ArtCategory.city, // 대전 도심 — 계룡산 랜드마크의 폴백
+  '31000': ArtCategory.city, // 울산 도심 — 반구대 랜드마크의 폴백
   '36110': ArtCategory.city, // 행정중심복합도시
   '41111': ArtCategory.city, // 수도권 도심
   '41113': ArtCategory.city, // 수도권 도심
@@ -191,7 +156,6 @@ const Map<String, ArtCategory> kRegionCategory = {
   '47250': ArtCategory.field, // 상주 곶감과 평야
   '47280': ArtCategory.mountain, // 문경새재
   '47290': ArtCategory.city, // 경산 대학도시
-  '27720': ArtCategory.field, // 군위 농촌
   '47730': ArtCategory.field, // 의성 마늘 농촌
   '47750': ArtCategory.mountain, // 주왕산과 주산지
   '47760': ArtCategory.mountain, // 일월산과 오지 산간
@@ -248,7 +212,7 @@ const Map<String, ArtCategory> kRegionCategory = {
   'DK001': ArtCategory.island, // 독도 — 동도·서도 두 바위섬
 };
 
-/// 계획된 랜드마크 37개. 분포 검사에서 주 노출을 계산할 때 쓴다.
+/// 계획된 랜드마크 32개. 분포 검사에서 주 노출을 계산할 때 쓴다.
 const Set<String> kPlannedLandmarks = {
   '11000',
   '28710',
@@ -261,8 +225,6 @@ const Set<String> kPlannedLandmarks = {
   '43800',
   '44760',
   '44150',
-  '30200',
-  '30110',
   '36110',
   '52190',
   '52800',
@@ -270,21 +232,18 @@ const Set<String> kPlannedLandmarks = {
   '12210',
   '47130',
   '47170',
-  '27140',
-  '27710',
   '48220',
   '48890',
-  '26410',
-  '26350',
-  '31710',
-  '31170',
   '50000',
   '41610',
   '41830',
   '41820',
-  '28245',
-  '26200',
   '48170',
   '47940',
+  '26000',
+  '27000',
+  '28000',
+  '30000',
+  '31000',
   'DK001',
 };

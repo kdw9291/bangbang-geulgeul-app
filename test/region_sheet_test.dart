@@ -77,7 +77,7 @@ void main() {
     });
 
     testWidgets('그래도 시도 진행률은 보여준다', (tester) async {
-      // 232번 반복되는 고정 문구만 두면 다음 목표가 보이지 않는다.
+      // 193번 반복되는 고정 문구만 두면 다음 목표가 보이지 않는다.
       await openApp(tester, null);
       await openRegion(tester, '경주시');
 

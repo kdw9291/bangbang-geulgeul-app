@@ -3,7 +3,7 @@ import 'map_data.dart';
 /// 시도 하나의 수집 진행률.
 ///
 /// 팝업이 "이 지역 하나" 를 넘어 **다음 목표**를 보여주기 위한 값이다.
-/// 232번 반복되는 고정 문구만 두면 수집 앱으로서 심심하다.
+/// 193번 반복되는 고정 문구만 두면 수집 앱으로서 심심하다.
 class SidoProgress {
   const SidoProgress({
     required this.sidoName,
@@ -27,7 +27,7 @@ class SidoProgress {
 
 /// 전체와 시도 16개를 **한 번에** 구한 요약.
 ///
-/// 기록 화면이 쓴다. 시도마다 [sidoProgressOf] 를 부르면 232개를 16번 훑는데,
+/// 기록 화면이 쓴다. 시도마다 [sidoProgressOf] 를 부르면 193개를 16번 훑는데,
 /// 비용보다 **모집단 규칙이 두 곳으로 갈라지는 것**이 문제다(Codex 25회차).
 /// 전체 수집 수도 여기서 나온 시도별 합이라 서로 어긋날 수 없다.
 class CollectionSummary {
@@ -38,7 +38,7 @@ class CollectionSummary {
   });
 
   /// **카탈로그를 훑어 센 값이다.** 넘겨받은 집합의 크기가 아니다 —
-  /// 그것을 쓰면 알 수 없는 ID 까지 세어 233/232 가 된다(M1 계약).
+  /// 그것을 쓰면 알 수 없는 ID 까지 세어 194/193 이 된다(M1 계약).
   final int collected;
   final int total;
 

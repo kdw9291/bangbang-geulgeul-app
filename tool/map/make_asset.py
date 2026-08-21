@@ -22,7 +22,8 @@ clone 하면 **에셋을 재생성할 수도 검증할 수도 없었다.** 카�
 import json, sys, io, math, os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from merge_spec import unit_for, MERGED_SIDOS, DOKDO, dokdo_rings  # noqa: E402
+from merge_spec import (unit_for, MERGED_SIDOS, expected_codes,  # noqa: E402
+                        EXPECTED_UNITS, DOKDO, dokdo_rings)
 
 # **북한 배경 입력은 기본적으로 필수다.**
 #
@@ -55,11 +56,18 @@ def rings(geom, dx, dy):
     return out
 
 raw = []
+#: `{시도: {시군구 이름: sgg}}`. 아래 코드 집합 검사가 쓴다.
+#
+# **병합되지 않고 잔류한 피처의 값만 믿을 수 있다.** 병합 피처의 `sggnm` 은
+# 합쳐진 것 중 아무거나 하나다. 잔류 여부는 `unit` 이 시도명이 아닌 것으로 안다.
+src_sgg = {}
 for f in json.load(open(SGG, encoding='utf-8'))['features']:
     p = f['properties']
+    if p['unit'] != p['sidonm']:
+        src_sgg.setdefault(p['sidonm'], {})[p['sggnm']] = str(p['sgg'])
     # 병합된 피처는 sgg/sggnm 이 합쳐진 구 중 하나의 값이라 믿을 수 없다.
     # 시도 이름으로 판단해 명세의 코드·이름을 붙인다.
-    code, name = unit_for(p['sidonm'], str(p['sgg']), p['sggnm'])
+    code, name = unit_for(p['sidonm'], str(p['sgg']), p['sggnm'], p['unit'])
     dx, dy = OFFSET.get(code, (0.0, 0.0))
     raw.append({'c': code, 'n': name, 's': SIDX[p['sidonm']],
                 'rings': rings(f['geometry'], dx, dy)})
@@ -75,6 +83,19 @@ if dup:
 missing = MERGED_SIDOS - {SIDOS[r['s']] for r in raw}
 if missing:
     sys.exit('병합 대상 시도가 입력에 없다: %s' % missing)
+
+# **부분 병합은 개수만으로 잡히지 않는다.**
+#
+# 인천은 9개 구만 합치고 강화군·옹진군은 남긴다. mapshaper 표현식을 잘못 고쳐
+# 11곳을 다 합치면 위의 중복 검사도 이 검사도 통과해 버린다 — 코드가 겹치지도,
+# 시도가 사라지지도 않기 때문이다. 그래서 시도별 **최종 코드 집합**을 못박는다.
+# (Codex 30회차 설계 검토 지적)
+for sidonm in MERGED_SIDOS:
+    got = {r['c'] for r in raw if SIDOS[r['s']] == sidonm}
+    want = expected_codes(sidonm, src_sgg.get(sidonm, {}))
+    if got != want:
+        sys.exit('%s 의 긁기 단위가 명세와 다르다\n  기대: %s\n  실제: %s'
+                 % (sidonm, sorted(want), sorted(got)))
 
 # ── 독도 (2026-08-14) ────────────────────────────────────────────
 #
@@ -160,6 +181,11 @@ if NK:
 
 data = {'w': round(W, 1), 'h': round(H, 1), 'sidos': SIDOS,
         'regions': regions, 'sidoLines': sido_lines}
+
+if len(regions) != EXPECTED_UNITS:
+    sys.exit('긁기 단위가 %d개다. 명세는 %d개 — mapshaper 가 피처를 흘렸거나 '
+             '행정구역이 바뀌었다. 후자면 merge_spec.EXPECTED_UNITS 를 고친다.'
+             % (len(regions), EXPECTED_UNITS))
 if bg:
     data['bg'] = bg
 io.open(OUT, 'w', encoding='utf-8').write(json.dumps(data, ensure_ascii=False, separators=(',', ':')))

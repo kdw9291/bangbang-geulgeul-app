@@ -27,7 +27,7 @@ abstract class CollectionStorage {
 ///
 /// ## 왜 파일인가
 ///
-/// 데이터가 최대 232행이라 `sqflite` 는 과하고, `shared_preferences` 는 손상 파일
+/// **모르는 ID 도 보존하므로 행 수에 상한은 없다.** 현재 카탈로그가 193행이라 `sqflite` 는 과하고, `shared_preferences` 는 손상 파일
 /// 격리·명시적 마이그레이션·내보내기를 다루기 불편하다. 파일이면 셋 다 자연스럽다.
 ///
 /// ## 원자성의 범위

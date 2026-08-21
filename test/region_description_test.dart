@@ -13,7 +13,7 @@ void main() {
   setUpAll(() async => data = await MapData.load());
 
   group('설명 데이터', () {
-    test('랜드마크 37개 전부에 설명이 있다', () {
+    test('랜드마크 32개 전부에 설명이 있다', () {
       final missing = kLandmarkArt.keys
           .where((c) => !kLandmarkDescription.containsKey(c))
           .toList();
@@ -33,7 +33,7 @@ void main() {
       }
     });
 
-    test('232개 전부가 설명을 받는다 — 빈 문자열로 떨어지지 않는다', () {
+    test('193개 전부가 설명을 받는다 — 빈 문자열로 떨어지지 않는다', () {
       // 하나라도 비면 그 지역은 수집 후에 할 말이 없는 화면이 된다.
       final empty = <String>[];
       for (final r in data.regions) {
@@ -92,13 +92,35 @@ void main() {
     });
 
     test('통합 단위는 한 번에 1/1 이 된다', () {
-      // 서울·제주는 시도 전체가 긁기 단위 하나다 (2026-08-14 통합의 결과).
-      final seoul = data.sidoNames.indexOf('서울특별시');
-      final p = sidoProgressOf(data, {'11000'}, seoul);
-      expect(p.total, 1);
+      // 시도 전체가 긁기 단위 하나인 곳들이다 — 서울·제주(2026-08-14)와
+      // 광역시 넷(2026-08-20). **서울만 보면 광역시 통합이 깨져도 통과한다.**
+      const oneToOne = {
+        '서울특별시': '11000',
+        '제주특별자치도': '50000',
+        '부산광역시': '26000',
+        '대구광역시': '27000',
+        '대전광역시': '30000',
+        '울산광역시': '31000',
+      };
+      for (final e in oneToOne.entries) {
+        final i = data.sidoNames.indexOf(e.key);
+        final p = sidoProgressOf(data, {e.value}, i);
+        expect(p.total, 1, reason: e.key);
+        expect(p.collected, 1, reason: e.key);
+        expect(p.complete, isTrue, reason: e.key);
+        expect(p.remaining, 0, reason: e.key);
+      }
+    });
+
+    test('인천은 통합해도 1/1 이 아니다', () {
+      // **강화군·옹진군을 남긴 예외가 살아 있는지 본다.** 옹진군(백령도)까지
+      // 합치면 병합 도형 폭이 전국의 40% 가 되어 지도가 망가진다.
+      final i = data.sidoNames.indexOf('인천광역시');
+      final p = sidoProgressOf(data, {'28000'}, i);
+      expect(p.total, 3);
       expect(p.collected, 1);
-      expect(p.complete, isTrue);
-      expect(p.remaining, 0);
+      expect(p.complete, isFalse);
+      expect(p.remaining, 2);
     });
 
     test('알 수 없는 ID 는 수치에 끼어들지 않는다', () {
@@ -112,12 +134,12 @@ void main() {
       expect(dirty.total, clean.total);
     });
 
-    test('시도별 합이 232 다', () {
+    test('시도별 합이 193 다', () {
       var sum = 0;
       for (var i = 0; i < data.sidoNames.length; i++) {
         sum += sidoProgressOf(data, const {}, i).total;
       }
-      expect(sum, 232);
+      expect(sum, 193);
     });
   });
 }

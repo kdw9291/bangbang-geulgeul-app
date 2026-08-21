@@ -134,7 +134,7 @@ class _SearchSheetState extends State<SearchSheet> {
                 const SizedBox(width: 8),
                 Flexible(
                   child: Text(
-                    '· 시도 이름을 함께 쳐 보세요 (예: 부산 중구)',
+                    '· 시도 이름을 함께 쳐 보세요 (예: 강원 고성)',
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: t.onSurfaceFaint, fontSize: 12),
                   ),

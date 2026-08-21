@@ -127,7 +127,7 @@ void main() {
 
       expect(find.byType(CircularProgressIndicator), findsNothing);
 
-      // **painter 가 실제로 무엇을 받았는지 본다.** `지역 232개` 는 수집이
+      // **painter 가 실제로 무엇을 받았는지 본다.** `지역 193개` 는 수집이
       // 비어 있어도 뜨므로, 그것만 보면 반영 코드를 지워도 통과한다
       // (Codex 17회차).
       expect(scratchedInPainter(tester), contains('DK001'));

@@ -11,8 +11,10 @@ export 'art_category.dart';
 
 /// T6 아트 — 지역 아트를 그리는 구현.
 ///
-/// **랜드마크 37개와 카테고리 8종이 전량 들어 있다.** 파일럿으로 시작했으나
+/// **랜드마크 32개와 카테고리 8종이 전량 들어 있다.** 파일럿으로 시작했으나
 /// 2026-08-14 에 제작이 끝났다 (37번째는 M15 로 신설한 독도).
+/// **2026-08-20 광역시 통합으로 32개가 됐다** — 통합 지역은 랜드마크를 하나만
+/// 가질 수 있어 대표를 남기고 다섯을 버렸다 (사용자 결정).
 /// 배경과 결정 근거는 `design/art-strategy.md` 참고.
 ///
 /// ## 왜 SVG `d` 문자열을 그대로 들고 있는가
@@ -750,11 +752,11 @@ final Map<String, RegionArt> kLandmarkArt = {
     ArtShape('M32 70 h40', stroke: _a2),
   ]),
 
-  // 28245 계양구 — 계양산 (자연경관)
+  // 28000 통합 단위 · 대표 원소재: 계양구 — 계양산 (자연경관)
   //
   // 장면 구성: 도시 스카이라인(배경) 뒤로 솟은 산(핵심).
   // 도시 한가운데 있는 산이라는 성격을 배경으로 드러낸다.
-  '28245': const RegionArt('계양산', [
+  '28000': const RegionArt('계양산', [
     ArtShape(
         'M-25 84 L-25 74 L-13 74 L-13 68 L-1 68 L-1 78 L11 78 L11 70 L23 70 '
         'L23 80 L35 80 L35 72 L47 72 L47 78 L59 78 L59 70 L71 70 L71 80 '
@@ -937,34 +939,17 @@ final Map<String, RegionArt> kLandmarkArt = {
     ArtShape('M48 56 V50 h4 v6', fill: _a),
   ]),
 
-  // 30200 유성구 — 계룡산 (국립공원, 자연경관)
+  // 30000 통합 단위 · 대표 원소재: 유성구 — 계룡산 (국립공원, 자연경관)
   //
   // 장면 구성: 닭 볏처럼 이어진 능선(배경·핵심).
   // 이름 그대로 봉우리가 연달아 솟은 형태를 핵심에 둔다.
-  '30200': const RegionArt('계룡산', [
+  '30000': const RegionArt('계룡산', [
     ArtShape('M-25 68 C-5 62 15 66 35 60 C50 55 62 57 75 62 C95 68 108 66 125 68 '
         'L125 88 L-25 88 Z',
         fill: _a2, stroke: null, layer: ArtLayer.background),
     ArtShape('M28 70 L34 52 L39 60 L45 40 L51 58 L57 44 L63 60 L72 70 Z',
         fill: _p),
     ArtShape('M39 60 L45 40 L50 52', stroke: _a2),
-  ]),
-
-  // 30110 동구(대전) — 대청호 (자연경관)
-  //
-  // 장면 구성: 호수를 둘러싼 산(배경) 가운데 물과 작은 섬(핵심).
-  // **댐 구조물은 그리지 않는다** — 현대 건축물이라 저작권 제약이 걸린다.
-  '30110': const RegionArt('대청호', [
-    ArtShape('M-25 46 L-8 30 L8 44 L26 28 L42 44 L58 30 L74 44 L92 28 L108 44 '
-        'L125 32 L125 54 L-25 54 Z',
-        fill: _a2, stroke: null, layer: ArtLayer.background),
-    ArtShape('M-25 80 C0 74 25 86 50 80 C75 74 100 84 125 78',
-        stroke: _a2, layer: ArtLayer.background),
-    ArtShape('M-25 92 C0 86 25 98 50 92 C75 86 100 96 125 90',
-        stroke: _a2, layer: ArtLayer.background),
-    ArtShape('M32 66 C36 58 44 54 50 54 C56 54 64 58 68 66 Z', fill: _p),
-    ArtShape('M50 54 V46'),
-    ArtShape('M44 46 L50 34 L56 46 Z', fill: _a2),
   ]),
 
   // 36110 세종시 — 금강 굽이 (자연경관)
@@ -1031,11 +1016,11 @@ final Map<String, RegionArt> kLandmarkArt = {
     ArtShape('M28 70 h44'),
   ]),
 
-  // 27140 동구(대구) — 팔공산 갓바위 (보물, 통일신라)
+  // 27000 통합 단위 · 대표 원소재: 동구(대구) — 팔공산 갓바위 (보물, 통일신라)
   //
   // 장면 구성: 팔공산 능선(배경) 앞에 갓 쓴 좌불(핵심).
   // 머리 위 **판석(갓)** 이 이름이자 표지다.
-  '27140': const RegionArt('팔공산 갓바위', [
+  '27000': const RegionArt('팔공산 갓바위', [
     ArtShape('M-25 70 C-5 62 15 66 35 58 C50 52 62 54 75 60 C95 68 108 66 125 68 '
         'L125 90 L-25 90 Z',
         fill: _a2, stroke: null, layer: ArtLayer.background),
@@ -1044,21 +1029,6 @@ final Map<String, RegionArt> kLandmarkArt = {
     ArtShape('M36 70 C36 50 44 42 50 42 C56 42 64 50 64 70 Z', fill: _p),
     ArtShape('M44 52 h12', stroke: _a, strokeWidth: 3),
     ArtShape('M32 70 h36'),
-  ]),
-
-  // 27710 달성군 — 비슬산 (자연경관)
-  //
-  // 장면 구성: 능선(배경) 앞 참꽃 군락과 암괴류(핵심).
-  // 봄 진달래로 알려진 산이라 붉은 점을 흩뿌려 다른 산과 구분한다.
-  '27710': const RegionArt('비슬산', [
-    ArtShape('M-25 72 C-5 64 15 68 35 60 C50 54 62 56 75 62 C95 70 108 68 125 70 '
-        'L125 92 L-25 92 Z',
-        fill: _a2, stroke: null, layer: ArtLayer.background),
-    ArtShape('M26 70 L40 40 L50 54 L58 44 L72 70 Z', fill: _p),
-    ArtShape.circle(38, 60, 3.5, fill: _a, stroke: null),
-    ArtShape.circle(50, 64, 3.5, fill: _a, stroke: null),
-    ArtShape.circle(61, 60, 3.5, fill: _a, stroke: null),
-    ArtShape.circle(45, 50, 3, fill: _a, stroke: null),
   ]),
 
   // 48220 통영시 — 한려수도 (자연경관)
@@ -1109,26 +1079,11 @@ final Map<String, RegionArt> kLandmarkArt = {
     ArtShape('M30 64 h40 v8 h-40 Z', fill: _p),
   ]),
 
-  // 26410 금정구 — 범어사 (조선 중건)
-  //
-  // 장면 구성: 금정산 능선(배경) 앞에 일주문(핵심).
-  // 기둥 하나 줄로 선 **일주문**이라 다른 사찰 건물과 구분된다.
-  '26410': const RegionArt('범어사', [
-    ArtShape('M-25 70 C-5 60 15 66 35 56 C50 48 62 50 75 58 C95 68 108 66 125 68 '
-        'L125 90 L-25 90 Z',
-        fill: _a2, stroke: null, layer: ArtLayer.background),
-    ArtShape('M28 46 L50 34 L72 46 Z', fill: _p),
-    ArtShape('M26 46 H74'),
-    ArtShape('M32 50 L50 42 L68 50 Z', fill: _p),
-    ArtShape('M38 50 V70 M50 50 V70 M62 50 V70', strokeWidth: 5),
-    ArtShape('M30 70 h40'),
-  ]),
-
-  // 26350 해운대구 — 해운대 해변 (자연경관)
+  // 26000 통합 단위 · 대표 원소재: 해운대구 — 해운대 해변 (자연경관)
   //
   // 장면 구성: 파도와 해(배경) 앞에 파라솔(핵심).
   // '바다·해변' 카테고리는 조개라 겹치지 않는다.
-  '26350': const RegionArt('해운대 해변', [
+  '26000': const RegionArt('해운대 해변', [
     ArtShape.circle(90, 24, 10,
         fill: _a, stroke: null, layer: ArtLayer.background),
     ArtShape('M-25 76 C-5 70 10 82 30 76 C50 70 65 82 85 76 C100 72 112 78 125 74',
@@ -1143,28 +1098,11 @@ final Map<String, RegionArt> kLandmarkArt = {
     ArtShape('M40 70 h20'),
   ]),
 
-  // 26200 영도구 — 태종대 (명승, 자연경관)
-  //
-  // 장면 구성: 바다 물결(배경) 앞에 해식 절벽과 등대(핵심).
-  // 등대는 특정 건물이 아니라 **일반 형태**로 그린다.
-  '26200': const RegionArt('태종대', [
-    ArtShape('M-25 84 C-5 78 10 90 30 84 C50 78 65 90 85 84 C100 80 112 86 125 82',
-        stroke: _a2, layer: ArtLayer.background),
-    ArtShape('M-25 96 C-5 90 10 102 30 96 C50 90 65 102 85 96 C100 92 112 98 125 94',
-        stroke: _a2, layer: ArtLayer.background),
-    ArtShape('M28 72 C32 60 40 56 50 56 C60 56 68 60 72 72 Z', fill: _p),
-    ArtShape('M44 56 V38 h12 v18 Z', fill: _p),
-    ArtShape('M42 38 h16 v-5 h-16 Z', fill: _p),
-    ArtShape('M46 44 h8', stroke: _a, strokeWidth: 3),
-    // 빛줄기가 없으면 그냥 흰 병으로 보인다.
-    ArtShape('M40 35 h-9 M60 35 h9', stroke: _a, strokeWidth: 3),
-  ]),
-
-  // 31710 울주군 — 반구대 암각화 (국보, 선사)
+  // 31000 통합 단위 · 대표 원소재: 울주군 — 반구대 암각화 (국보, 선사)
   //
   // 장면 구성: 절벽면(배경) 위에 새겨진 고래와 사람(핵심).
   // 바위그림이라는 성격을 살려 **선각 실루엣**으로 그린다.
-  '31710': const RegionArt('반구대 암각화', [
+  '31000': const RegionArt('반구대 암각화', [
     // 암벽면. 가로 결을 넣지 않으면 그냥 배경색으로 보인다.
     ArtShape('M-25 22 H125 V80 H-25 Z',
         fill: _a2, stroke: null, layer: ArtLayer.background),
@@ -1177,20 +1115,6 @@ final Map<String, RegionArt> kLandmarkArt = {
         fill: _p),
     ArtShape('M64 50 L70 44 L70 60 L64 59', fill: _p),
     ArtShape.circle(40, 51, 2.4, fill: ArtPalette.ink, stroke: null),
-  ]),
-
-  // 31170 동구(울산) — 대왕암 (자연경관)
-  //
-  // 장면 구성: 바다 물결(배경) 앞에 붉은 바위 무리와 다리(핵심).
-  '31170': const RegionArt('대왕암', [
-    ArtShape('M-25 82 C-5 76 10 88 30 82 C50 76 65 88 85 82 C100 78 112 84 125 80',
-        stroke: _a2, layer: ArtLayer.background),
-    ArtShape('M-25 94 C-5 88 10 100 30 94 C50 88 65 100 85 94 C100 90 112 96 125 92',
-        stroke: _a2, layer: ArtLayer.background),
-    ArtShape('M28 72 L36 48 L44 72 Z', fill: _p),
-    ArtShape('M42 72 L52 38 L62 72 Z', fill: _p),
-    ArtShape('M58 72 L66 52 L74 72 Z', fill: _p),
-    ArtShape('M36 50 C44 42 56 40 64 52', stroke: _a, strokeWidth: 4),
   ]),
 
   // 47130 경주시 — 첨성대 (국보, 7세기)
@@ -1460,7 +1384,7 @@ final List<RegionArt> kCityScenes =
 /// **상호 배타적 폴백 등급이다** — 랜드마크가 있으면 랜드마크, 없으면 카테고리,
 /// 카테고리도 없으면 `null`(1층: 단색 + 지역명). 합성 레이어가 아니다.
 ///
-/// 카테고리 배정 **232개**는 `region_category.g.dart` 에 있고
+/// 카테고리 배정 **193개**는 `region_category.g.dart` 에 있고
 /// `tool/category/make_category_map.py` 가 만든다. 배정 근거는
 /// `design/category-assignment.md` 참고.
 RegionArt? artForRegion(String code) {

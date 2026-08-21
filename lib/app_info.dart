@@ -34,7 +34,9 @@ const String kMapAttributionBody =
 /// **변경 고지.** CC BY 4.0 은 자료를 고쳤으면 고쳤다고 밝히기를 요구한다.
 const String kMapAttributionChanges =
     '방방긁긁은 앱에 맞게 다음을 적용했습니다 — 시군구·시도 단위 병합, '
-    '4% 좌표 단순화, 화면 좌표 투영, 서울특별시와 제주특별자치도의 단일 단위 통합, '
+    '4% 좌표 단순화, 화면 좌표 투영, 서울특별시·제주특별자치도와 '
+    '부산·대구·대전·울산광역시의 단일 단위 통합, '
+    '인천광역시의 강화군·옹진군을 제외한 단일 단위 통합, '
     '독도 단위 신설과 크기 조정.';
 
 const String kMapDistributionUrl =

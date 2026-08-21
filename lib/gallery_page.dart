@@ -21,9 +21,9 @@ import 'region_description.dart';
 /// 가리는 대상은 **랜드마크 이름과 설명뿐**이다. 지역명·시도명은 지도와 검색에
 /// 이미 공개돼 있어 힌트가 되지 않는다(Codex 23회차 확인).
 ///
-/// ## 대상은 랜드마크 37개다
+/// ## 대상은 랜드마크 32개다
 ///
-/// 232개 전부가 아니다(2026-08-18 사용자 결정). 단일 원본은
+/// 193개 전부가 아니다(2026-08-18 사용자 결정). 단일 원본은
 /// [kPlannedLandmarks] 이며 [kLandmarkArt]·[kLandmarkDescription] 과
 /// 세 집합이 정확히 일치한다 — 테스트가 이를 강제한다.
 class GalleryPage extends StatelessWidget {
@@ -65,8 +65,8 @@ class GalleryPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppThemeScope.of(context);
     final entries = _entries;
-    // **모집단은 랜드마크 37개다.** `snapshot.length` 를 쓰면 랜드마크가 없는
-    // 지역과 현재 카탈로그에 없는 ID 까지 세어 38/37 같은 값이 나온다.
+    // **모집단은 랜드마크 32개다.** `snapshot.length` 를 쓰면 랜드마크가 없는
+    // 지역과 현재 카탈로그에 없는 ID 까지 세어 33/32 같은 값이 나온다.
     final collected =
         entries.where((r) => snapshot.contains(r.scratchUnitId)).length;
 
@@ -194,7 +194,7 @@ class _Header extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            // **"지역을 긁으면" 이라고 쓰지 않는다.** 232곳 중 195곳은 긁어도
+            // **"지역을 긁으면" 이라고 쓰지 않는다.** 193곳 중 161곳은 긁어도
             // 이 화면이 변하지 않아, 저장이 안 된 것으로 오해하게 된다.
             collected == 0
                 ? '랜드마크가 있는 $total곳을 긁으면 이곳에 공개됩니다.'

@@ -59,6 +59,7 @@ class _SettingsPageState extends State<SettingsPage> {
         foregroundColor: t.onSurface,
       ),
       body: ListView(
+        key: const Key('settingsList'),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
           _SectionTitle('바다 색'),

@@ -8,7 +8,7 @@ import 'package:mapscratch/map_data.dart';
 import 'package:mapscratch/region_art.dart';
 import 'package:mapscratch/region_category.g.dart';
 
-/// 232개 카테고리 배정을 **전국 지도 위에서 눈으로 보는 도구.** 검사가 아니다.
+/// 193개 카테고리 배정을 **전국 지도 위에서 눈으로 보는 도구.** 검사가 아니다.
 ///
 /// 표로만 보면 이상한 배정을 못 잡는다. 인접 지역과 견줘 봐야
 /// "여기만 왜 혼자 바다지?" 같은 것이 드러난다.

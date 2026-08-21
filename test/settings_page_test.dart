@@ -65,9 +65,22 @@ void main() {
 
   /// 설정은 `ListView` 라 화면 밖 항목이 **아직 만들어지지도 않았다.**
   /// 그냥 찾으면 "없다" 가 나오므로 보일 때까지 굴린다.
+  ///
+  /// **굴릴 대상을 위치로 고르면 안 된다.** 출처 표시의 `SelectableText` 가
+  /// 안에 제 `Scrollable`(뷰포트 57px)을 만들어서, 그것이 만들어지는 순간부터
+  /// `.last` 가 목록이 아니라 그 URL 칸을 가리킨다. 그러면 아무리 굴려도 목록은
+  /// 그대로라 "없다" 로 끝난다. 실제로 2026-08-20 에 출처 문구가 길어지자
+  /// 순서가 뒤집혀 두 테스트가 깨졌다 — 화면 문제가 아니라 테스트가 취약했던
+  /// 것이다. `.first` 도 같은 종류의 추측이라 **key 로 목록을 지목한다**
+  /// (Codex 30회차).
   Future<void> scrollTo(WidgetTester tester, Finder target) async {
     await tester.scrollUntilVisible(target, 200,
-        scrollable: find.byType(Scrollable).last);
+        scrollable: find
+            .descendant(
+                of: find.byKey(const Key('settingsList')),
+                matching: find.byType(Scrollable),
+                matchRoot: true)
+            .first);
     await tester.pumpAndSettle();
   }
 

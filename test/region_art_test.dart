@@ -116,8 +116,8 @@ void main() {
   });
 
   group('파일럿 아트 데이터', () {
-    test('랜드마크 37개 · 카테고리 8종이 모두 파싱된다', () {
-      expect(kLandmarkArt.length, 37);
+    test('랜드마크 32개 · 카테고리 8종이 모두 파싱된다', () {
+      expect(kLandmarkArt.length, 32);
       expect(kCategoryArt.length, ArtCategory.values.length);
 
       for (final art in [...kLandmarkArt.values, ...kCategoryArt.values]) {
@@ -210,10 +210,10 @@ void main() {
         '강화 고인돌', '백령도 두무진', '계양산', '세종대왕릉', '남한산성',
         '두물머리', '자라섬·북한강',
         '설악산', '월정사 구층석탑', '법주사 팔상전', '도담삼봉',
-        '정림사지 오층석탑', '공산성', '계룡산', '대청호', '금강 굽이',
-        '광한루', '채석강', '무등산', '팔공산 갓바위', '비슬산', '한려수도',
-        '해인사 장경판전', '진주성 촉석루', '범어사', '해운대 해변', '태종대',
-        '반구대 암각화', '대왕암',
+        '정림사지 오층석탑', '공산성', '계룡산', '금강 굽이',
+        '광한루', '채석강', '무등산', '팔공산 갓바위', '한려수도',
+        '해인사 장경판전', '진주성 촉석루', '해운대 해변',
+        '반구대 암각화',
       };
       // ⚠ 현대 건축물 예외. 1971년 완공이라 보호기간 내이고 상표 문제도 있다.
       // 사용자가 위험을 알고 채택했다(2026-08-13). 인앱결제 추가 전 법률 검토 필요.
@@ -235,9 +235,9 @@ void main() {
       // 랜드마크가 제작되면 이 예시는 폴백이 아니게 되므로, 랜드마크 계획이
       // 없는 지역을 고른다.
       expect(artForRegion('12870')?.name, '섬'); // 신안군
-      expect(artForRegion('26140')?.name, '바다·해변'); // 부산 서구
+      expect(artForRegion('51170')?.name, '바다·해변'); // 동해시
       expect(kLandmarkArt.containsKey('12870'), isFalse);
-      expect(kLandmarkArt.containsKey('26140'), isFalse);
+      expect(kLandmarkArt.containsKey('51170'), isFalse);
     });
 
     test('둘 다 없으면 null — 1층 단색 폴백', () {
@@ -247,7 +247,7 @@ void main() {
     test('파일럿 대상 10개 전부가 아트를 받는다', () {
       const pilot = [
         '47130', '41115', '47170', '50000', '12150', '47940',
-        '11000', '12770', '28720', '26140',
+        '11000', '12770', '28720', '26000',
       ];
       for (final c in pilot) {
         expect(artForRegion(c), isNotNull, reason: c);
@@ -258,7 +258,7 @@ void main() {
   group('장면 변형', () {
     test('같은 코드는 언제나 같은 변형을 준다', () {
       // 난수를 쓰면 앱을 다시 켤 때마다 강남구가 다르게 보인다.
-      for (final code in ['11680', '11110', '28177', '41111']) {
+      for (final code in ['11680', '11110', '28000', '41111']) {
         expect(ArtVariant.forCode(code), ArtVariant.forCode(code));
       }
     });
@@ -282,7 +282,8 @@ void main() {
     test('도시로 배정된 지역들이 충분히 다른 그림을 받는다', () {
       // 원래 이 변형은 서울 25개 구가 같은 그림을 쓰는 문제 때문에 넣었다.
       // 2026-08-14 통합으로 서울은 1개가 됐지만, 수도권 시·군과 광역시 자치구가
-      // 여전히 도시로 몰린다(주 노출 195개 중 69개).
+      // 여전히 도시로 몰린다(주 노출 161개 중 47개).
+      // 2026-08-20 광역시 통합으로 자치구가 사라져 69 → 47 로 줄었다.
       final cityCodes = kRegionCategory.entries
           .where((e) => e.value == ArtCategory.city)
           .map((e) => e.key)

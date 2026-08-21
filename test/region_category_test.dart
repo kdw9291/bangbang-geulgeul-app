@@ -7,7 +7,7 @@ import 'package:mapscratch/map_data.dart';
 import 'package:mapscratch/region_art.dart';
 import 'package:mapscratch/region_category.g.dart';
 
-/// 232개 카테고리 배정 검증.
+/// 193개 카테고리 배정 검증.
 ///
 /// 배정 자체는 사람이 정한다 — 지도 에셋에 고도·토지이용·인구 데이터가 없어
 /// 산과 들판을 가를 신호가 아예 없기 때문이다(Codex 검토 2026-08-13).
@@ -25,28 +25,67 @@ void main() {
       expect(kRegionCategory.keys.toSet(), mapCodes);
     });
 
-    test('232개 전부 배정돼 있다', () {
+    test('193개 전부 배정돼 있다', () {
       // 랜드마크가 있는 지역도 폴백으로 카테고리를 가진다.
       // 랜드마크를 빼거나 바꿔도 아트가 사라지지 않게 하기 위해서다.
-      expect(kRegionCategory.length, 232);
+      expect(kRegionCategory.length, 193);
     });
 
     test('생성물이 단일 원본과 일치한다', () {
       // 원본(`tool/category/make_category_map.py`)만 고치고 재생성을 잊으면
       // 앱은 옛 배정을 쓰면서 테스트는 통과한다. 그 구멍을 막는다.
-      final py = Process.runSync(
-        'python',
-        ['tool/category/make_category_map.py', '--check'],
-        workingDirectory: Directory.current.path,
-        stdoutEncoding: utf8,
-        stderrEncoding: utf8,
-      );
-      if (py.exitCode == 2) {
-        // python 이 없는 환경에서는 건너뛴다. CI 에서는 있어야 한다.
-        debugPrint('경고: python 을 찾지 못해 생성물 최신성을 확인하지 못했다');
-        return;
+      //
+      // **신호 파일도 함께 본다.** 카테고리 생성기는 신호의 코드 집합만
+      // 비교하므로, 지역 코드가 그대로인 채 도형만 바뀌면 낡은 `coast` 가
+      // 조용히 통과한다 (Codex 30회차 코드 리뷰).
+      for (final script in const [
+        'tool/category/make_signals.py',
+        'tool/category/make_category_map.py',
+      ]) {
+        final py = Process.runSync(
+          'python',
+          [script, '--check'],
+          workingDirectory: Directory.current.path,
+          stdoutEncoding: utf8,
+          stderrEncoding: utf8,
+        );
+        if (py.exitCode == 2) {
+          // python 이 없는 환경에서는 건너뛴다. CI 에서는 있어야 한다.
+          debugPrint('경고: python 을 찾지 못해 생성물 최신성을 확인하지 못했다');
+          return;
+        }
+        expect(py.exitCode, 0, reason: '$script: ${py.stdout}${py.stderr}');
       }
-      expect(py.exitCode, 0, reason: '${py.stdout}${py.stderr}');
+    }, skip: !Platform.isWindows && !Platform.isLinux && !Platform.isMacOS);
+
+    test('병합 검증 로직이 잘못된 병합을 잡는다', () {
+      // **앱 테스트는 이미 만들어진 에셋만 본다.** 생성기가 잘못된 병합을
+      // 걸러내는지는 파이썬 쪽 반례 테스트만 검사할 수 있다.
+      //
+      // `verify_merge.py` 는 병합 전 원본과 면적을 대조한다. 코드 집합 검사와
+      // 개수 트립와이어로는 **병합 그룹 안에서 구성원이 빠지는 것**을 못 잡기
+      // 때문이다 (Codex 30회차 재검토 지적).
+      for (final script in const [
+        'tool/map/test_merge_spec.py',
+        'tool/map/verify_merge.py',
+        // **검증기가 무엇을 거부하는지는 거부당하는 입력으로만 확인된다.**
+        // 정상 파일에 돌려 0 만 보면 `TOLERANCE` 가 1 이 되어도 통과한다
+        // (Codex 30회차 3차 지적).
+        'tool/map/test_verify_merge.py',
+      ]) {
+        final py = Process.runSync(
+          'python',
+          [script],
+          workingDirectory: Directory.current.path,
+          stdoutEncoding: utf8,
+          stderrEncoding: utf8,
+        );
+        if (py.exitCode == 2) {
+          debugPrint('경고: python 을 찾지 못해 병합 검증을 확인하지 못했다');
+          return;
+        }
+        expect(py.exitCode, 0, reason: '$script: ${py.stdout}${py.stderr}');
+      }
     }, skip: !Platform.isWindows && !Platform.isLinux && !Platform.isMacOS);
 
     test('모든 카테고리에 아트가 있다', () {
@@ -55,7 +94,7 @@ void main() {
       }
     });
 
-    test('232개 전부 아트를 받는다 — 단색 폴백으로 떨어지는 지역이 없다', () {
+    test('193개 전부 아트를 받는다 — 단색 폴백으로 떨어지는 지역이 없다', () {
       for (final r in data.regions) {
         expect(artForRegion(r.scratchUnitId), isNotNull, reason: '${r.scratchUnitId} ${r.name}');
       }
@@ -91,28 +130,66 @@ void main() {
       expect(bad, isEmpty);
     });
 
-    test('서울·제주가 하나의 긁기 단위로 병합돼 있다', () {
-      // 2026-08-14 사용자 결정. 병합 명세는 design/tools/merge_spec.py 이고
-      // mapshaper -dissolve 가 위상 연산으로 처리한다.
+    test('통합 시도가 명세대로 병합돼 있다', () {
+      // 2026-08-14 서울·제주, 2026-08-20 광역시 다섯. 병합 명세는
+      // `tool/map/merge_spec.py` 이고 mapshaper -dissolve2 가 위상 연산으로
+      // 처리한다.
       final byCode = {for (final r in data.regions) r.scratchUnitId: r};
+      const merged = {
+        '11000': '서울특별시',
+        '26000': '부산광역시',
+        '27000': '대구광역시',
+        '28000': '인천광역시',
+        '30000': '대전광역시',
+        '31000': '울산광역시',
+        '50000': '제주특별자치도',
+      };
+      for (final e in merged.entries) {
+        final r = byCode[e.key];
+        expect(r, isNotNull, reason: '${e.value} 통합 코드 ${e.key} 가 없다');
+        expect(r!.name, e.value);
+      }
 
-      final seoul = byCode['11000'];
-      expect(seoul, isNotNull, reason: '서울 통합 코드가 없다');
-      expect(seoul!.name, '서울특별시');
-      // 내부 구 경계가 남아 있으면 링이 여러 개가 되고 지도에 경계선이 그려진다.
-      expect(seoul.rings.length, 1, reason: '서울 내부 경계가 남았다');
-
-      final jeju = byCode['50000'];
-      expect(jeju, isNotNull, reason: '제주 통합 코드가 없다');
-      expect(jeju!.name, '제주특별자치도');
+      // **`rings.length == 1` 을 모두에게 요구하면 안 된다.** 부산에는 가덕도,
+      // 인천에는 영종도, 제주에는 부속섬이 있어 링이 여럿이다. 내부 구 경계가
+      // 남았는지는 서울처럼 부속섬이 없는 곳에서만 링 수로 볼 수 있다.
+      expect(byCode['11000']!.rings.length, 1, reason: '서울 내부 경계가 남았다');
+      expect(byCode['27000']!.rings.length, 1, reason: '대구 내부 경계가 남았다');
+      expect(byCode['30000']!.rings.length, 1, reason: '대전 내부 경계가 남았다');
+      expect(byCode['31000']!.rings.length, 1, reason: '울산 내부 경계가 남았다');
 
       // 흡수된 옛 코드가 남아 있으면 안 된다.
+      //
+      // **인천은 강화군·옹진군이 살아 있어야 한다.** 그래서 접두사로 싸잡아
+      // 지우지 않고 잔류 목록을 따로 둔다.
+      const survivors = {'28710', '28720'};
       final leftovers = data.regions
           .map((r) => r.scratchUnitId)
-          .where((c) => (c.startsWith('11') && c != '11000') ||
-              (c.startsWith('50') && c != '50000'))
+          .where((c) =>
+              !merged.containsKey(c) &&
+              !survivors.contains(c) &&
+              const ['11', '26', '27', '28', '30', '31', '50']
+                  .any(c.startsWith))
           .toList();
-      expect(leftovers, isEmpty);
+      expect(leftovers, isEmpty, reason: '흡수됐어야 할 옛 코드가 남았다');
+    });
+
+    test('통합 시도의 단위 수가 명세와 같다', () {
+      // 전체 193 이 맞아도 **시도별 분포가 틀릴 수 있다** (Codex 30회차).
+      // 인천 3 은 강화군·옹진군을 남긴 예외이고, 그것이 계약이다.
+      final count = <String, int>{};
+      for (final r in data.regions) {
+        final sido = data.sidoNames[r.sido];
+        count[sido] = (count[sido] ?? 0) + 1;
+      }
+      expect(count['서울특별시'], 1);
+      expect(count['부산광역시'], 1);
+      expect(count['대구광역시'], 1);
+      expect(count['인천광역시'], 3, reason: '강화군·옹진군이 남아야 한다');
+      expect(count['대전광역시'], 1);
+      expect(count['울산광역시'], 1);
+      expect(count['제주특별자치도'], 1);
+      expect(count['세종특별자치시'], 1);
     });
 
     test('옛 서울 구 위치를 찍으면 통합 서울로 판정된다', () {
@@ -147,7 +224,7 @@ void main() {
     test('계획된 랜드마크 코드가 모두 지도에 있다', () {
       final mapCodes = data.regions.map((r) => r.scratchUnitId).toSet();
       expect(kPlannedLandmarks.difference(mapCodes), isEmpty);
-      expect(kPlannedLandmarks.length, 37);
+      expect(kPlannedLandmarks.length, 32);
     });
   });
 
@@ -156,8 +233,8 @@ void main() {
     // 바꾸게 되면 배정 품질이 떨어진다 (Codex 검토 2026-08-13).
     // 대신 수치를 찍어 두고 사람이 보게 한다.
 
-    test('주 노출 195개 기준 분포를 보고한다', () {
-      // 계획된 랜드마크 37개는 카테고리를 폴백으로만 쓰므로 빼고 센다.
+    test('주 노출 161개 기준 분포를 보고한다', () {
+      // 계획된 랜드마크 32개는 카테고리를 폴백으로만 쓰므로 빼고 센다.
       // 제작 진행도와 무관하게 최종 상태 기준으로 본다.
       final counts = <ArtCategory, int>{};
       for (final r in data.regions) {
@@ -173,7 +250,7 @@ void main() {
         debugPrint('  ${e.key.name.padRight(10)} ${e.value}개 '
             '(${(e.value / total * 100).toStringAsFixed(1)}%)');
       }
-      expect(total, 195); // 232 − 랜드마크 37
+      expect(total, 161); // 193 − 랜드마크 32
     });
 
     test('쓰이지 않는 카테고리를 보고한다', () {

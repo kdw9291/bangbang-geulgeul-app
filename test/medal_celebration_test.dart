@@ -107,7 +107,7 @@ void main() {
 
       expect(find.byKey(const Key('medalCelebration')), findsOneWidget);
       expect(find.text('20곳 메달을 땄어요'), findsOneWidget);
-      expect(find.text('20/232곳'), findsOneWidget);
+      expect(find.text('20/193곳'), findsOneWidget);
     });
 
     testWidgets('메달을 넘지 않는 수집에는 뜨지 않는다', (tester) async {
@@ -189,7 +189,7 @@ void main() {
       tester.platformDispatcher.textScaleFactorTestValue = 2.5;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
-      final medals = MedalSet.forTotal(232);
+      final medals = MedalSet.forTotal(193);
       await tester.pumpWidget(MaterialApp(
         home: AppThemeScope(
           theme: kThemeLight,
@@ -198,8 +198,8 @@ void main() {
               onPressed: () => showMedalCelebration(
                 context,
                 medal: medals.medals.last, // 문구가 가장 긴 전국 완주
-                collected: 232,
-                total: 232,
+                collected: 193,
+                total: 193,
               ),
               child: const Text('열기'),
             ),
@@ -231,11 +231,11 @@ void main() {
 
   group('전국 완주', () {
     testWidgets('마지막 한 곳을 긁으면 완주 문구가 나온다', (tester) async {
-      await openApp(tester, savedFirst(231));
-      await scratch(tester, firstUncollected(231));
+      await openApp(tester, savedFirst(192));
+      await scratch(tester, firstUncollected(192));
 
       expect(find.text('전국을 다 모았어요!'), findsOneWidget);
-      expect(find.text('232/232곳'), findsOneWidget);
+      expect(find.text('193/193곳'), findsOneWidget);
     });
   });
 }

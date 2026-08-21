@@ -51,7 +51,9 @@ void main() {
       '11000': '서울',
       '12770': '장흥군',
       '28720': '옹진군',
-      '26140': '부산서구',
+      '26000': '부산',
+      '28000': '인천',
+      '27000': '대구',
     };
 
     const cell = 240.0;
@@ -146,7 +148,19 @@ void main() {
             : buildLargestIslandPath(layout).transform(m.storage);
         canvas.save();
         canvas.clipPath(clip);
-        paintRegionArt(canvas, art, artTargetFill(clip, clip.getBounds()));
+        // **초점은 긁기 화면과 같은 것을 써야 한다.**
+        //
+        // 예전에는 `clip.getBounds()` 를 썼는데, 긁기 화면은 재배치가 없을 때
+        // `largestRingBounds`(가장 큰 링)를 쓴다. 링이 하나인 지역은 둘이 같아
+        // 차이가 안 보였지만, 2026-08-20 광역시 통합으로 부산(3링)·인천(3링)처럼
+        // 부속섬을 가진 통합 지역이 생겼다. 눈으로 보는 도구가 실제와 다르면
+        // 도구가 아니다 (Codex 30회차 설계 검토 지적).
+        final focus = layout == null
+            ? largestRingBounds(region.rings,
+                scale: m.storage[0],
+                offset: Offset(m.storage[12], m.storage[13]))
+            : clip.getBounds();
+        paintRegionArt(canvas, art, artTargetFill(clip, focus));
         canvas.restore();
       }
 

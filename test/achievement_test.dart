@@ -12,17 +12,17 @@ void main() {
   setUpAll(() async => data = await MapData.load());
 
   group('메달 구성', () {
-    test('현재 데이터에서 20·50·100·150·232 가 된다', () {
+    test('현재 데이터에서 20·50·100·150·193 가 된다', () {
       // 사용자 결정(2026-08-18). 마지막은 숫자가 아니라 **전국 완주**이므로
       // 상수로 박지 않고 카탈로그 크기에서 나온다 — 그 해석 결과를 못박는다.
       final m = MedalSet.of(data);
-      expect(m.medals.map((e) => e.threshold).toList(), [20, 50, 100, 150, 232]);
+      expect(m.medals.map((e) => e.threshold).toList(), [20, 50, 100, 150, 193]);
       expect(m.medals.last.nationwide, isTrue);
       expect(m.total, data.regions.length);
     });
 
     test('총 개수가 바뀌어도 마지막은 전국 완주다', () {
-      // 행정구역 개편으로 232 가 바뀌는 상황. 232 를 하드코딩했다면 여기서 깨진다.
+      // 행정구역 개편으로 193 가 바뀌는 상황. 193 를 하드코딩했다면 여기서 깨진다.
       final m = MedalSet.forTotal(240);
       expect(m.medals.last.threshold, 240);
       expect(m.medals.map((e) => e.threshold).toList(),
@@ -50,13 +50,13 @@ void main() {
 
     test('메달 id 에 임계치 숫자를 쓰지 않는다', () {
       // 전국 완주의 id 가 `count232` 면 개편 때 id 가 흔들린다.
-      expect(MedalSet.forTotal(232).medals.last.id, 'nationwide');
+      expect(MedalSet.forTotal(193).medals.last.id, 'nationwide');
       expect(MedalSet.forTotal(240).medals.last.id, 'nationwide');
     });
   });
 
   group('획득 판정 경계값', () {
-    final m = MedalSet.forTotal(232);
+    final m = MedalSet.forTotal(193);
     Medal at(int t) => m.medals.firstWhere((e) => e.threshold == t);
 
     test('임계치 직전에는 못 받고 임계치에서 받는다', () {
@@ -67,16 +67,16 @@ void main() {
       }
     });
 
-    test('전국 완주는 231 에서 못 받고 232 에서 받는다', () {
+    test('전국 완주는 192 에서 못 받고 193 에서 받는다', () {
       final nation = m.medals.last;
-      expect(m.achieved(nation, 231), isFalse);
-      expect(m.achieved(nation, 232), isTrue);
+      expect(m.achieved(nation, 192), isFalse);
+      expect(m.achieved(nation, 193), isTrue);
     });
 
     test('전국 완주는 총 개수를 넘겨도 받지 않는다', () {
-      // **`>=` 로 두면 안 된다.** 모집단을 잘못 세어 233 이 나오면 그 버그가
+      // **`>=` 로 두면 안 된다.** 모집단을 잘못 세어 194 가 나오면 그 버그가
       // "완주" 로 보여 가려진다 — M6 갤러리에서 실제로 겪은 유형이다.
-      expect(m.achieved(m.medals.last, 233), isFalse);
+      expect(m.achieved(m.medals.last, 194), isFalse);
     });
 
     test('0 곳이면 하나도 못 받는다', () {
@@ -86,28 +86,28 @@ void main() {
 
     test('다 받으면 다음 메달이 null 이다', () {
       // `remaining = 0` 을 돌려주면 화면이 "0곳 남았어요" 라고 쓴다.
-      expect(m.achievedCount(232), 5);
-      expect(m.nextAfter(232), isNull);
+      expect(m.achievedCount(193), 5);
+      expect(m.nextAfter(193), isNull);
     });
 
     test('다음 메달은 아직 못 받은 첫 번째다', () {
       expect(m.nextAfter(19)!.threshold, 20);
       expect(m.nextAfter(20)!.threshold, 50);
-      expect(m.nextAfter(151)!.threshold, 232);
+      expect(m.nextAfter(151)!.threshold, 193);
     });
   });
 
   group('요약 모집단', () {
-    test('전체와 시도 합계가 232 로 맞는다', () {
+    test('전체와 시도 합계가 193 로 맞는다', () {
       final s = collectionSummaryOf(data, const {});
-      expect(s.total, 232);
+      expect(s.total, 193);
       expect(s.sidos.length, 16);
-      expect(s.sidos.fold<int>(0, (a, b) => a + b.total), 232);
+      expect(s.sidos.fold<int>(0, (a, b) => a + b.total), 193);
       expect(s.collected, 0);
     });
 
     test('알 수 없는 ID 는 세지 않는다', () {
-      // **`CollectionSnapshot.length` 를 쓰면 233/232 가 된다**(M1 계약 —
+      // **`CollectionSnapshot.length` 를 쓰면 194/193 이 된다**(M1 계약 —
       // 저장은 보존하되 표시·달성률에서 제외).
       final snap = CollectionSnapshot.empty.collect(CollectedUnit(
         scratchUnitId: '99999',
@@ -150,13 +150,20 @@ void main() {
   });
 
   group('1/1 시도', () {
-    test('서울·세종·제주 셋뿐이다', () {
+    test('광역시 통합으로 일곱 곳이 됐다', () {
       // 문서에 "서울·제주·독도" 로 적혀 있었으나 **독도는 경상북도 24곳 중
       // 하나**라 1/1 이 아니고, 세종이 빠져 있었다. 기존 테스트도 서울만 봤다.
       final s = collectionSummaryOf(data, const {});
       final ones =
           s.sidos.where((e) => e.total == 1).map((e) => e.sidoName).toSet();
-      expect(ones, {'서울특별시', '세종특별자치시', '제주특별자치도'});
+      expect(ones, {
+        '서울특별시', '세종특별자치시', '제주특별자치도',
+        '부산광역시', '대구광역시', '대전광역시', '울산광역시',
+      });
+      // **인천은 강화군·옹진군이 남아 3곳**이라 여기 들어오지 않는다.
+      // 그 예외가 살아 있는지 함께 본다.
+      expect(s.sidos.firstWhere((e) => e.sidoName == '인천광역시').total, 3,
+          reason: '인천은 강화군·옹진군이 통합에서 빠져 3곳이어야 한다');
     });
 
     test('독도는 경상북도에 들어가 1/1 을 만들지 않는다', () {

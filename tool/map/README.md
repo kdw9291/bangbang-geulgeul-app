@@ -15,10 +15,12 @@
 
 | 파일 | 역할 |
 |---|---|
-| `merge_spec.py` | 긁기 단위 명세 — 병합(서울 → `11000`, 제주 → `50000`)과 신설(독도 `DK001`) |
+| `merge_spec.py` | 긁기 단위 명세 — 병합 7곳과 신설(독도 `DK001`) |
 | `make_asset.py` | 투영·정규화·에셋 생성 |
+| `verify_merge.py` | 병합 전후 면적 대조 — **구성원 유실을 잡는다** |
+| `test_merge_spec.py` | 병합 판정·검증 로직의 반례 8종 |
 | `sgg_simplified.geojson` | 시군구 256개 (mapshaper 4% 단순화 결과) |
-| `sgg_merged.geojson` | 서울·제주 통합 후 231개 — **2단계 산출물** |
+| `sgg_merged.geojson` | 통합 후 192개 — **2단계 산출물** (독도 전) |
 | `sido_simplified.geojson` | 시도 16개 외곽선 |
 | `extract_nk.py` | Natural Earth 에서 북한만 뽑는다 |
 | `nk.geojson` | 북한 배경 (Natural Earth 1:50m, **public domain**) — 링 2개·정점 257 |
@@ -37,19 +39,36 @@ npx -y mapshaper@0.7.52 sgg_simplified.geojson -dissolve sidonm -o format=geojso
 
 3,558개 → 256개, 33MB → 382KB.
 
-### 2. 서울·제주 통합 (256 → 231)
+### 2. 서울·제주·광역시 통합 (256 → 192)
 
 `-dissolve2` 로 내부 경계까지 없애야 한다. 링을 이어 붙이면 서울 링이 25개로 남고
 아트가 통합 지역이 아니라 가장 큰 구(서초구)에 놓인다.
 
 ```bash
-npx -y mapshaper@0.7.52 sgg_simplified.geojson -each "unit = (sidonm=='서울특별시' || sidonm=='제주특별자치도') ? sidonm : sgg" -dissolve2 unit copy-fields=sgg,sggnm,sidonm -o format=geojson precision=0.0001 sgg_merged.geojson
+npx -y mapshaper@0.7.52 sgg_simplified.geojson -each "unit = ((sidonm=='서울특별시' || sidonm=='제주특별자치도' || sidonm=='부산광역시' || sidonm=='대구광역시' || sidonm=='대전광역시' || sidonm=='울산광역시' || (sidonm=='인천광역시' && sggnm!='강화군' && sggnm!='옹진군')) ? sidonm : sgg)" -dissolve2 unit copy-fields=sgg,sggnm,sidonm -o format=geojson precision=0.0001 sgg_merged.geojson
 ```
 
 > **병합 명세는 `merge_spec.py` 가 원본이다.** 카테고리 생성기도 2026-08-14 부터
 > 그 파일을 import 한다. **다만 위 mapshaper 명령만은 시도 이름을 하드코딩한다** —
 > mapshaper 가 파이썬을 읽지 못해 구조적으로 합칠 수 없다. 병합 대상을 바꾸면
-> 둘을 함께 고친다. 한쪽만 고치면 `make_asset.py` 의 `MERGED_SIDOS` 검사에 걸려 실패한다.
+> 둘을 함께 고친다. 한쪽만 고치면 `make_asset.py` 의 검사에 걸려 실패한다.
+>
+> **인천은 시도 전체가 아니라 9개 구만 합친다** — `sggnm` 조건이 그것이다. 이 단계의
+> `sggnm` 은 아직 병합 전이라 믿을 수 있다. 병합 뒤에는 믿을 수 없어져서
+> 판정도 검증도 mapshaper 가 남긴 **`unit` 필드**로 한다.
+
+병합이 끝나면 **바로 검증한다.** 에셋을 만들고 나서는 늦다.
+
+```bash
+python tool/map/verify_merge.py
+python tool/map/test_merge_spec.py
+```
+
+`verify_merge.py` 는 병합 전 원본과 **면적을 대조해 구성원 유실을 잡는다.**
+`make_asset.py` 의 코드 집합 검사와 개수 트립와이어로는 병합 **그룹 안에서**
+한 곳이 빠지는 것을 못 잡는다 — 부산 16곳 중 하나가 빠져도 결과는 여전히 피처
+하나라 최종 개수가 193 그대로다. `test_merge_spec.py` 는 그 검증 로직 자체의
+반례 8종을 검사한다. 둘 다 앱 테스트가 함께 실행한다.
 
 ### 3. 에셋 생성
 
@@ -67,7 +86,8 @@ python tool/map/make_asset.py tool/map/sgg_merged.geojson tool/map/sido_simplifi
 y 는 화면 좌표(아래로 증가) 기준으로 저장한다 — 렌더에서 y 만 뒤집으면 기울기가 어긋난다.
 울릉군만 동해 안쪽으로 95km 당긴다(bbox 를 65km 넓히기 때문).
 
-결과: 313KB · 긁기 단위 **232개**(정점 18,058) · 시도선 16개 · 489 × 623 km.
+결과: 긁기 단위 **193개** · 시도선 16개 · 489 × 623 km.
+(2026-08-20 광역시 통합 전에는 313KB · 232개 · 정점 18,058 이었다.)
 
 ### 독도는 여기서 만들어 넣는다 (2026-08-14)
 
@@ -109,22 +129,26 @@ python tool/map/extract_nk.py ne_50m_admin_0_countries.geojson tool/map/nk.geojs
 배경은 지도 프레임 계산에서 **제외**된다 — 넣으면 남한 좌표가 재계산되어 화면에서 작아진다.
 결과 좌표는 y 가 음수이며(남한 위쪽), 렌더가 클리핑을 풀어야 보인다.
 
-### 4. 카테고리 배정 재생성
+### 4. 카테고리 신호와 배정 재생성
 
-에셋을 다시 만들었으면 카테고리 생성물도 갱신한다. Flutter 테스트가 `--check` 로 강제한다.
+**지도를 바꿨으면 반드시 함께 돌린다.** 신호는 최종 에셋에서 뽑는다 — 통합
+도형은 내부 경계가 사라져 해안 비율이 달라지므로 옛 값을 합산할 수 없다.
 
 ```bash
+python tool/category/make_signals.py
 python tool/category/make_category_map.py
 ```
+
+두 생성물의 최신성은 앱 테스트가 `--check` 로 확인한다.
 
 ## 재현성
 
 **mapshaper 0.7.52 로 2·3단계를 재실행해 최종 에셋이 바이트 단위로 동일함을 확인했다**
 (2026-08-14). 파이프라인을 이 디렉토리로 옮긴 뒤에도 같은 결과를 확인했다.
 
-현재 에셋: sha256 `8858329c…` · 320,378 바이트 · 232개 (독도 포함).
-독도 추가 전 231개 기준값은 `881ed2bd…` · 317,017 바이트였다.
-**2단계 산출물 `sgg_merged.geojson` 은 독도와 무관하므로 그대로다** — 독도는 3단계에서
+현재 에셋: sha256 `d639a2b7…` · 306,816 바이트 · 193개 (독도 포함).
+2026-08-20 광역시 통합 전 232개 기준값은 `8858329c…` · 320,378 바이트였다.
+**2단계 산출물 `sgg_merged.geojson` 은 독도와 무관하다** — 독도는 3단계에서
 `merge_spec.py` 가 만들어 넣는다. 그래서 mapshaper 재현성 검증은 여전히 유효하다.
 
 **`@latest` 를 쓰지 않는다** — 재현성을 보장하지 않는다. 결과가 달라지면 먼저 버전을

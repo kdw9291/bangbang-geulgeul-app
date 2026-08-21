@@ -10,7 +10,7 @@ import 'sido_progress.dart';
 /// ## 모집단은 현재 카탈로그다
 ///
 /// [CollectionSummary] 가 `data.regions` 를 훑어 만든 값만 쓴다.
-/// `CollectionSnapshot.length` 를 쓰면 **알 수 없는 ID 까지 세어 233/232** 가
+/// `CollectionSnapshot.length` 를 쓰면 **알 수 없는 ID 까지 세어 194/193** 이
 /// 된다(M1 계약 — 저장은 보존하되 표시·달성률에서 제외).
 ///
 /// ## 16행뿐이라 지연 생성을 쓰지 않는다

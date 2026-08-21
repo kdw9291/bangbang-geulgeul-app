@@ -111,27 +111,27 @@ void main() {
   });
 
   group('전체 달성률', () {
-    testWidgets('빈 상태는 0/232 이고 첫 메달까지 20곳이다', (tester) async {
+    testWidgets('빈 상태는 0/193 이고 첫 메달까지 20곳이다', (tester) async {
       await openApp(tester, null);
       await goRecords(tester);
 
-      expect(find.text('0/232'), findsOneWidget);
+      expect(find.text('0/193'), findsOneWidget);
       expect(find.text('20곳 메달까지 20곳 남았어요'), findsOneWidget);
     });
 
     testWidgets('알 수 없는 ID 는 달성률에 섞이지 않는다', (tester) async {
-      // 여기서 1/232 가 나오면 `snapshot.length` 를 쓴 것이다.
+      // 여기서 1/193 가 나오면 `snapshot.length` 를 쓴 것이다.
       await openApp(tester, saved(['99999']));
       await goRecords(tester);
 
-      expect(find.text('0/232'), findsOneWidget);
+      expect(find.text('0/193'), findsOneWidget);
     });
 
     testWidgets('수집하면 남은 수가 줄어든다', (tester) async {
       await openApp(tester, savedFirst(5));
       await goRecords(tester);
 
-      expect(find.text('5/232'), findsOneWidget);
+      expect(find.text('5/193'), findsOneWidget);
       expect(find.text('20곳 메달까지 15곳 남았어요'), findsOneWidget);
     });
   });
@@ -166,10 +166,10 @@ void main() {
     });
 
     testWidgets('전부 모으면 다섯 개 획득이고 다음 메달 문구가 없다', (tester) async {
-      await openApp(tester, savedFirst(232));
+      await openApp(tester, savedFirst(193));
       await goRecords(tester);
 
-      expect(find.text('232/232'), findsOneWidget);
+      expect(find.text('193/193'), findsOneWidget);
       expect(find.text('획득'), findsNWidgets(5));
       expect(find.text('전국을 다 모았어요!'), findsOneWidget);
       expect(find.textContaining('남았어요'), findsNothing,
@@ -327,7 +327,7 @@ void main() {
     testWidgets('릴리스 구성에서도 세 탭이 정상이다', (tester) async {
       await openApp(tester, savedFirst(20), showDiagnostics: false);
       await goRecords(tester);
-      expect(find.text('20/232'), findsOneWidget);
+      expect(find.text('20/193'), findsOneWidget);
       expect(find.text('획득'), findsOneWidget);
     });
   });
@@ -341,7 +341,7 @@ void main() {
       await goRecords(tester);
 
       expect(tester.takeException(), isNull);
-      expect(find.text('60/232'), findsOneWidget);
+      expect(find.text('60/193'), findsOneWidget);
     });
 
     testWidgets('좁은 화면에서 마지막 시도까지 스크롤된다', (tester) async {

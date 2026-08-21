@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mapscratch/map_data.dart';
 import 'package:mapscratch/region_search.dart';
 
-/// M3 지역 검색. **순수 로직이라 실제 에셋 232개로 직접 검사한다.**
+/// M3 지역 검색. **순수 로직이라 실제 에셋 193개로 직접 검사한다.**
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -111,12 +111,15 @@ void main() {
     });
 
     test('시도명과 지역명을 함께 쳐서 동명을 좁힌다', () {
-      // `중구` 만 치면 여섯 곳이 나온다. 이게 안 되면 사용자는 목록을 눈으로
+      // `고성군` 만 치면 두 곳이 나온다. 이게 안 되면 사용자는 목록을 눈으로
       // 훑어야 한다 (Codex 18회차).
-      final r = searcher.search('부산 중구');
+      //
+      // **예전에는 `부산 중구` 로 검사했다.** 2026-08-20 광역시 통합으로 `중구`
+      // 여섯 곳이 통째로 사라져 동명이 `고성군` 하나만 남았다.
+      final r = searcher.search('경상남도 고성군');
       expect(r.length, 1);
-      expect(r.single.region.name, '중구');
-      expect(r.single.sidoName, '부산광역시');
+      expect(r.single.region.name, '고성군');
+      expect(r.single.sidoName, '경상남도');
     });
 
     test('시도명을 줄여 써도 좁혀진다', () {
@@ -126,24 +129,31 @@ void main() {
     });
 
     test('초성으로도 좁힐 수 있다', () {
-      final r = searcher.search('ㅂㅅ ㅈㄱ');
-      expect(r.map((e) => e.region.name), contains('중구'));
+      final r = searcher.search('ㄱㅇ ㄱㅅㄱ');
+      expect(r.map((e) => e.region.name), contains('고성군'));
+      expect(r.single.sidoName, '강원특별자치도');
+    });
 
+    test('초성 잡음은 순위로 뒤에 선다', () {
       // **초성 복합 질의는 잡음이 섞인다.** 긴 시도명의 초성열에는 짧은 토막이
       // 우연히 들어가기 때문이다 — `전남광주통합특별시`(ㅈㄴㄱㅈㅌㅎㅌㅂㅅ)에
-      // `ㅂㅅ` 가 들어 있어 강진군이 걸린다. 규칙상 맞는 결과이므로 없애지
-      // 않고, **순위로 뒤로 밀리는 것**만 보장한다.
-      expect(r.first.sidoName, '부산광역시');
-      final firstOther = r.indexWhere((e) => e.sidoName != '부산광역시');
-      if (firstOther >= 0) {
-        expect(r.sublist(0, firstOther).every((e) => e.sidoName == '부산광역시'),
-            isTrue);
-        expect(r[firstOther].rank, greaterThan(r.first.rank));
-      }
+      // 태백시의 `ㅌㅂㅅ` 가 들어 있어 걸린다. 규칙상 맞는 결과이므로 없애지
+      // 않고 **뒤로 밀리는 것**만 보장한다.
+      //
+      // **조건문으로 감싸면 안 된다.** 예전에는 `if (firstOther >= 0)` 안에
+      // 두었는데, 2026-08-20 광역시 통합으로 그 질의의 결과가 1개가 되면서
+      // 이 계약이 **한 번도 검사되지 않게 됐다**(Codex 30회차). 잡음이 실제로
+      // 생기는 질의를 골라 조건 없이 단언한다.
+      final r = searcher.search('ㄱㅇ ㅌㅂㅅ');
+      expect(r.length, greaterThan(1), reason: '잡음이 사라지면 이 테스트는 뜻이 없다');
+      expect(r.first.sidoName, '강원특별자치도');
+      final firstOther = r.indexWhere((e) => e.sidoName != '강원특별자치도');
+      expect(firstOther, greaterThan(0));
+      expect(r[firstOther].rank, greaterThan(r.first.rank));
     });
 
     test('토막 하나라도 안 맞으면 결과가 없다', () {
-      expect(searcher.search('부산 경주시'), isEmpty);
+      expect(searcher.search('강원 경주시'), isEmpty);
     });
 
     test('시도명으로 그 시도의 지역들을 찾는다', () {
@@ -169,14 +179,17 @@ void main() {
   });
 
   group('동명 지역', () {
-    test('이름이 겹치는 여섯 곳을 안다', () {
+    test('이름이 겹치는 곳은 고성군 하나뿐이다', () {
       // 시도명을 함께 보여주지 않으면 어느 곳인지 알 수 없다.
-      expect(searcher.ambiguousNames,
-          {'중구', '서구', '동구', '남구', '북구', '고성군'});
+      //
+      // **2026-08-20 광역시 통합으로 여섯에서 하나로 줄었다.** 겹치던 중구·서구·
+      // 동구·남구·북구가 전부 광역시 안에 있었기 때문이다. 통합의 부수 효과라
+      // 목표는 아니었지만 검색이 눈에 띄게 쉬워졌으므로 계약으로 남긴다.
+      expect(searcher.ambiguousNames, {'고성군'});
     });
 
-    test('중구를 찾으면 전부 ambiguous 로 표시된다', () {
-      final r = searcher.search('중구');
+    test('고성군을 찾으면 전부 ambiguous 로 표시된다', () {
+      final r = searcher.search('고성군');
       expect(r.length, greaterThan(1));
       expect(r.every((e) => e.ambiguousName), isTrue);
       // 시도명이 서로 달라야 구분이 된다.
@@ -193,7 +206,8 @@ void main() {
       // 예전에는 30개에서 조용히 끊었다. 그러면 사용자는 찾는 곳이 없는 것인지
       // 잘린 것인지 알 수 없다 (2026-08-15 사용자 결정으로 상한을 없앴다).
       expect(searcher.search('시').length, greaterThan(100));
-      expect(searcher.search('ㄱ').length, greaterThan(200));
+      // 상한(30)의 몇 배인지가 요점이라 통합 뒤 값에 맞춰 낮췄다.
+      expect(searcher.search('ㄱ').length, greaterThan(140));
     });
 
     test('좁히라고 안내할 기준이 있다', () {
@@ -204,7 +218,7 @@ void main() {
           lessThanOrEqualTo(RegionSearcher.crowded));
     });
 
-    test('232개 전부 자기 이름으로 찾힌다', () {
+    test('193개 전부 자기 이름으로 찾힌다', () {
       final missing = <String>[];
       for (final r in searcher.data.regions) {
         final hit = searcher
@@ -215,7 +229,7 @@ void main() {
       expect(missing, isEmpty);
     });
 
-    test('232개 전부 자기 초성으로 찾힌다', () {
+    test('193개 전부 자기 초성으로 찾힌다', () {
       final missing = <String>[];
       for (final r in searcher.data.regions) {
         final hit = searcher
