@@ -41,6 +41,9 @@ void main() {
       for (final script in const [
         'tool/category/make_signals.py',
         'tool/category/make_category_map.py',
+        // 카탈로그 manifest 도 지도에서 파생된다. 지도만 바꾸고 다시 안 만들면
+        // 서버가 옛 목록을 본다 (S3 N1 계약 5절).
+        'tool/map/catalog.py',
       ]) {
         final py = Process.runSync(
           'python',
@@ -68,6 +71,7 @@ void main() {
       for (final script in const [
         'tool/map/test_merge_spec.py',
         'tool/map/verify_merge.py',
+        'tool/map/test_catalog.py',
         // **검증기가 무엇을 거부하는지는 거부당하는 입력으로만 확인된다.**
         // 정상 파일에 돌려 0 만 보면 `TOLERANCE` 가 1 이 되어도 통과한다
         // (Codex 30회차 3차 지적).

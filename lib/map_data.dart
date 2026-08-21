@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart' show rootBundle;
 
 import 'geometry.dart';
@@ -110,6 +111,29 @@ class SidoLine {
   final Path path;
 }
 
+/// 지도 JSON 에서 **카탈로그 버전과 해시**를 읽어 검증한다.
+///
+/// `MapData.load()` 밖으로 뺀 이유는 **반례를 직접 넣어 볼 수 있게** 하기
+/// 위해서다. 안에 두면 "현재 에셋에 키가 있다" 정도만 검사하게 되고, 없을 때
+/// 정말 실패하는지는 확인되지 않는다 (Codex 지적).
+///
+/// 없는 채로 넘어가면 수집 레코드에 버전을 못 남기고, 그 사실이 서버 연동에
+/// 가서야 드러난다. 그래서 **없으면 실패한다.**
+@visibleForTesting
+(String, String) readCatalog(Map<String, dynamic> json) {
+  final version = json['catalogVersion'];
+  final hash = json['catalogHash'];
+  if (version is! String || version.isEmpty) {
+    throw StateError('지도 에셋에 catalogVersion 이 없다');
+  }
+  // **길이만 보면 안 된다.** `z` 64개도 통과하면서 오류 문구는 SHA-256 이라고
+  // 말하게 된다.
+  if (hash is! String || !RegExp(r'^[0-9a-f]{64}$').hasMatch(hash)) {
+    throw StateError('지도 에셋의 catalogHash 가 SHA-256 형식이 아니다');
+  }
+  return (version, hash);
+}
+
 class MapData {
   MapData({
     required this.size,
@@ -117,6 +141,8 @@ class MapData {
     required this.regions,
     required this.sidoLines,
     required this.backgroundLand,
+    required this.catalogVersion,
+    required this.catalogHash,
     required this.vertexCount,
     required this.loadMs,
     required this.readMs,
@@ -141,6 +167,23 @@ class MapData {
   /// 유지된다) 북한은 위쪽으로 벗어난다. 렌더는 이 영역이 잘리지 않도록
   /// 클리핑을 풀어야 한다.
   final Path? backgroundLand;
+
+  /// 이 지도가 어느 **긁기 단위 카탈로그**인지.
+  ///
+  /// 수집 레코드에 "어느 카탈로그에서 수집했는가" 를 남기려면 앱이 이 값을 알아야
+  /// 한다. 긁기 단위는 이미 두 번 바뀌었다 — 2026-08-14 에 256 → 232,
+  /// 2026-08-20 에 232 → 193. **출시 뒤에 또 바뀌면 버전 없이는 옛 기록을
+  /// 재해석할 수 없다** (`source/backend/SYNC_CONTRACT.md` 5.5).
+  ///
+  /// 원본은 `tool/map/unit_registry.json` 이고 `tool/map/catalog.py` 가 계산한다.
+  /// **앱은 이 값을 만들지 않고 읽기만 한다** — 두 곳에서 계산하면 갈린다.
+  final String catalogVersion;
+
+  /// 카탈로그 목록의 canonical hash. 서버 manifest 와 대조하는 값이다.
+  ///
+  /// 도형 전체가 아니라 **id·name·sido·status 만**의 해시라, 도형을 다시
+  /// 단순화해도 목록이 같으면 값이 같다.
+  final String catalogHash;
 
   final int vertexCount;
 
@@ -178,6 +221,8 @@ class MapData {
       }
       return p;
     }
+
+    final (catalogVersion, catalogHash) = readCatalog(json);
 
     final regions = <Region>[];
     for (final r in json['regions'] as List) {
@@ -227,6 +272,8 @@ class MapData {
       regions: regions,
       sidoLines: lines,
       backgroundLand: background,
+      catalogVersion: catalogVersion,
+      catalogHash: catalogHash,
       vertexCount: vertices,
       loadMs: sw.elapsedMilliseconds,
       readMs: readMs,
