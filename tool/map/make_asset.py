@@ -186,6 +186,27 @@ if len(regions) != EXPECTED_UNITS:
     sys.exit('긁기 단위가 %d개다. 명세는 %d개 — mapshaper 가 피처를 흘렸거나 '
              '행정구역이 바뀌었다. 후자면 merge_spec.EXPECTED_UNITS 를 고친다.'
              % (len(regions), EXPECTED_UNITS))
+
+# **카탈로그 버전과 해시를 에셋에 박는다.**
+#
+# 수집 레코드에 "어느 카탈로그에서 수집했는지" 를 남기려면 앱이 그 값을 알아야
+# 한다. 긁기 단위는 이미 두 번 바뀌었고(256 → 232 → 193), 출시 뒤에 또 바뀌면
+# 버전 없이는 옛 기록을 재해석할 수 없다 (SYNC_CONTRACT.md 5.5).
+#
+# 값의 원본은 `unit_registry.json` 이고 `catalog.py` 가 계산한다. 여기서 다시
+# 계산하지 않는다 — 두 곳에서 계산하면 조용히 갈린다.
+#
+# **지금 만든 `data` 를 넘긴다.** 디스크의 옛 에셋을 읽게 두면 다음 개편에서
+# 등록부를 먼저 고쳐도, 지도를 먼저 만들려 해도 막힌다 (Codex 지적, 재현 확인).
+import catalog  # noqa: E402
+
+try:
+    _manifest = catalog.build_manifest(
+        catalog.load_registry(), data, catalog.load_history())
+except catalog.CatalogError as e:
+    sys.exit(str(e))
+data['catalogVersion'] = _manifest['version']
+data['catalogHash'] = _manifest['hash']
 if bg:
     data['bg'] = bg
 io.open(OUT, 'w', encoding='utf-8').write(json.dumps(data, ensure_ascii=False, separators=(',', ':')))

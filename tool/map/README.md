@@ -18,6 +18,11 @@
 | `merge_spec.py` | 긁기 단위 명세 — 병합 7곳과 신설(독도 `DK001`) |
 | `make_asset.py` | 투영·정규화·에셋 생성 |
 | `verify_merge.py` | 병합 전후 면적 대조 — **구성원 유실을 잡는다** |
+| `unit_registry.json` | **긁기 단위 등록부 — 추가만 된다.** 폐지 ID 를 지우지 않고 `retired` 로 남긴다 |
+| `catalog.py` | 등록부와 지도를 대조해 서버용 `catalog_manifest.json` 과 canonical hash 를 만든다 |
+| `catalog_manifest.json` | **서버용 산출물.** 앱 에셋이 아니다 |
+| `catalog_history/` | **버전별 불변 스냅샷.** 그 버전에서 무엇이 active 였는지. **지우거나 고치지 않는다** |
+| `test_catalog.py` | 등록부·해시·이력 검증의 반례 27종 |
 | `test_merge_spec.py` | 병합 판정·검증 로직의 반례 8종 |
 | `sgg_simplified.geojson` | 시군구 256개 (mapshaper 4% 단순화 결과) |
 | `sgg_merged.geojson` | 통합 후 192개 — **2단계 산출물** (독도 전) |
@@ -141,12 +146,44 @@ python tool/category/make_category_map.py
 
 두 생성물의 최신성은 앱 테스트가 `--check` 로 확인한다.
 
+### 5. 긁기 단위 등록부와 카탈로그 manifest
+
+**단위가 늘거나 사라지면 `unit_registry.json` 을 먼저 손으로 고친다.**
+
+- 새 단위: `status: "active"` 로 **추가**한다
+- 사라진 단위: **지우지 않고** `status` 를 `"retired"` 로 바꾼다.
+  ID 를 재사용하면 과거 기록이 엉뚱한 지역으로 옮겨간다
+- `version` 을 새 값으로 바꾼다. **version 과 목록은 일대일**이다
+
+그다음 3단계(에셋 생성)를 다시 돌리고 manifest 를 만든다.
+
+```bash
+python tool/map/catalog.py
+python tool/map/test_catalog.py
+```
+
+`version` 은 **`YYYY-MM-DD`** 이고 같은 날 두 번 개편하면 `2026-08-20.2` 처럼 붙인다.
+**형식이 계약이다** — 이 값이 그대로 스냅샷 파일 이름이 되므로, 자유 문자열로 두면
+`../escape` 같은 값이 이력 디렉토리 밖에 파일을 만든다.
+
+`catalog.py` 는 버전마다 **`catalog_history/<version>.json` 을 한 번 쓰고 다시 쓰지
+않는다.** 등록부의 현재 status 만으로는 과거 버전에서 무엇이 active 였는지 알 수
+없기 때문이다 — 232 시절 광역시 44곳은 지금 `retired` 지만 그때는 `active` 였다.
+**이력 파일을 지우거나 고치면 검사에 걸린다.**
+
+`catalog.py` 는 **지도의 ID 집합이 등록부의 active 집합과 정확히 같은지** 검증한다.
+한쪽만 고치면 여기서 실패한다. 에셋 생성기도 이 값을 읽어 `catalogVersion` 과
+`catalogHash` 를 에셋에 넣으므로, **등록부가 어긋나면 에셋 자체가 안 만들어진다.**
+
+규칙의 원본은 [`source/backend/SYNC_CONTRACT.md`](../../../backend/SYNC_CONTRACT.md) 5절이다.
+
 ## 재현성
 
 **mapshaper 0.7.52 로 2·3단계를 재실행해 최종 에셋이 바이트 단위로 동일함을 확인했다**
 (2026-08-14). 파이프라인을 이 디렉토리로 옮긴 뒤에도 같은 결과를 확인했다.
 
-현재 에셋: sha256 `d639a2b7…` · 306,816 바이트 · 193개 (독도 포함).
+현재 에셋: sha256 `8efe3ca9…` · 306,927 바이트 · 193개 (독도 포함).
+2026-08-21 에 `catalogVersion`·`catalogHash` 가 더해져 값이 바뀌었다.
 2026-08-20 광역시 통합 전 232개 기준값은 `8858329c…` · 320,378 바이트였다.
 **2단계 산출물 `sgg_merged.geojson` 은 독도와 무관하다** — 독도는 3단계에서
 `merge_spec.py` 가 만들어 넣는다. 그래서 mapshaper 재현성 검증은 여전히 유효하다.
