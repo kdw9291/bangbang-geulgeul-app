@@ -1,4 +1,4 @@
-package kr.bangbang.mapscratch
+package kr.bangbang.geulgeul
 
 import io.flutter.embedding.android.FlutterActivity
 
