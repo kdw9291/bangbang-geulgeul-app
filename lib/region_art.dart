@@ -1024,11 +1024,20 @@ final Map<String, RegionArt> kLandmarkArt = {
     ArtShape('M-25 70 C-5 62 15 66 35 58 C50 52 62 54 75 60 C95 68 108 66 125 68 '
         'L125 90 L-25 90 Z',
         fill: _a2, stroke: null, layer: ArtLayer.background),
-    ArtShape('M34 34 h32 v5 h-32 Z', fill: _p),
-    ArtShape('M42 39 C42 30 58 30 58 39 Z', fill: _p),
-    ArtShape('M36 70 C36 50 44 42 50 42 C56 42 64 50 64 70 Z', fill: _p),
-    ArtShape('M44 52 h12', stroke: _a, strokeWidth: 3),
-    ArtShape('M32 70 h36'),
+    // **핵심을 안전 영역보다 더 안쪽으로 모았다** (2026-08-21).
+    //
+    // 광역시 통합으로 대구에 군위군이 붙어 도형이 세로로 길어지자, 좌불이
+    // 좌우로 잘려 **흰 덩어리로만 보였다**(실기기 확인). 아트 사각형은 도형의
+    // 긴 변 기준이라 좁은 허리에서 폭이 1.5배 넘친다.
+    //
+    // 배치 규칙을 고치는 안은 폐기했다 — 두 가지를 렌더해 봤는데 대구는 거의
+    // 안 나아지고 서울 남산타워가 오히려 잘렸다. **갓바위 아트는 대구에서만
+    // 쓰므로 여기만 줄이면 다른 지역에 영향이 없다.**
+    ArtShape('M38 38 h24 v4 h-24 Z', fill: _p),
+    ArtShape('M45 42 C45 35 55 35 55 42 Z', fill: _p),
+    ArtShape('M40 65 C40 51 45 45 50 45 C55 45 60 51 60 65 Z', fill: _p),
+    ArtShape('M46 52 h8', stroke: _a, strokeWidth: 3),
+    ArtShape('M37 65 h26'),
   ]),
 
   // 48220 통영시 — 한려수도 (자연경관)
